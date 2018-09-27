@@ -1815,8 +1815,10 @@ funPrologue live cmmBlocks = do
 funEpilogue :: LiveGlobalRegs -> LlvmM ([LlvmVar], LlvmStatements)
 funEpilogue live = do
 
-    -- Have information and liveness optimisation is enabled?
-    let liveRegs = alwaysLive ++ live
+    -- the bool indicates whether the register is padding.
+    let alwaysNeeded = map (\r -> (False, r)) alwaysLive
+        livePadded = alwaysNeeded ++ padLiveArgs live
+
         isSSE (FloatReg _)  = True
         isSSE (DoubleReg _) = True
         isSSE (XmmReg _)    = True
@@ -1834,9 +1836,12 @@ funEpilogue live = do
           let ty = (pLower . getVarType $ lmGlobalRegVar dflags r)
           return (Just $ LMLitVar $ LMUndefLit ty, nilOL)
     platform <- getDynFlag targetPlatform
-    loads <- flip mapM (activeStgRegs platform) $ \r -> case () of
-      _ | r `elem` liveRegs  -> loadExpr r
-        | not (isSSE r)      -> loadUndef r
+    let allRegs = sortSSERegs $ activeStgRegs platform
+    loads <- flip mapM allRegs $ \r -> case () of
+      _ | (False, r) `elem` livePadded
+                             -> loadExpr r   -- if r is not padding, load it
+        | not (isSSE r) || (True, r) `elem` livePadded
+                             -> loadUndef r
         | otherwise          -> return (Nothing, nilOL)
 
     let (vars, stmts) = unzip loads

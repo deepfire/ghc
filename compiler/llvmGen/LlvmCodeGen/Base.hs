@@ -26,7 +26,7 @@ module LlvmCodeGen.Base (
 
         cmmToLlvmType, widthToLlvmFloat, widthToLlvmInt, llvmFunTy,
         llvmFunSig, llvmFunArgs, llvmStdFunAttrs, llvmFunAlign, llvmInfAlign,
-        llvmPtrBits, tysToParams, llvmFunSection,
+        llvmPtrBits, tysToParams, llvmFunSection, padLiveArgs, sortSSERegs,
 
         strCLabel_llvm, strDisplayName_llvm, strProcedureName_llvm,
         getGlobalPtr, generateExternDecls,
@@ -58,6 +58,7 @@ import ErrUtils
 import qualified Stream
 
 import Control.Monad (ap)
+import Data.List (sortBy)
 
 -- ----------------------------------------------------------------------------
 -- * Some Data Types
@@ -147,16 +148,63 @@ llvmFunSection dflags lbl
 -- | A Function's arguments
 llvmFunArgs :: DynFlags -> LiveGlobalRegs -> [LlvmVar]
 llvmFunArgs dflags live =
-    map (lmGlobalRegArg dflags) (filter isPassed (activeStgRegs platform))
+    map (lmGlobalRegArg dflags) (filter isPassed allRegs)
     where platform = targetPlatform dflags
-          isLive r = not (isSSE r) || r `elem` alwaysLive || r `elem` live
+          allRegs = sortSSERegs $ activeStgRegs platform
+          paddedLive = map (\(_,r) -> r) $ padLiveArgs live
+          isLive r = not (isSSE r) || r `elem` alwaysLive || r `elem` paddedLive
           isPassed r = not (isSSE r) || isLive r
-          isSSE (FloatReg _)  = True
-          isSSE (DoubleReg _) = True
-          isSSE (XmmReg _)    = True
-          isSSE (YmmReg _)    = True
-          isSSE (ZmmReg _)    = True
-          isSSE _             = False
+          isSSE r
+            | Just _ <- sseRegNum r = True
+            | otherwise = False
+
+
+sseRegNum :: GlobalReg -> Maybe Int
+sseRegNum (FloatReg i)  = Just i
+sseRegNum (DoubleReg i) = Just i
+sseRegNum (XmmReg i)    = Just i
+sseRegNum (YmmReg i)    = Just i
+sseRegNum (ZmmReg i)    = Just i
+sseRegNum _             = Nothing
+
+-- Only sorts regs that will end up in SSE registers
+-- such that the ones which are assigned to the same
+-- register will be adjacent in the list. Other elements
+-- are not reordered.
+sortSSERegs :: [GlobalReg] -> [GlobalReg]
+sortSSERegs regs = sortBy sseOrd regs
+    where
+        sseOrd a b = case (sseRegNum a, sseRegNum b) of
+            (Just x, Just y) -> compare x y
+            _                 -> EQ
+
+-- assumes that the live list is sorted by Ord GlobalReg's compare function.
+-- the bool indicates whether the global reg was added as padding.
+padLiveArgs :: LiveGlobalRegs -> [(Bool, GlobalReg)]
+padLiveArgs live = reverse padded
+    where
+        (_, padded) = foldl assignSlots (1, []) $ sortSSERegs live
+
+        assignSlots (i, acc) r
+            | Just k <- sseRegNum r
+            , i < k
+            = let  -- add k-i slots of padding
+                diff = k-i
+                acc' = genPad i diff ++ (False, r) : acc
+                i' = i + diff
+              in
+                (i', acc')
+
+            | otherwise = (i, (False, r):acc)
+
+        genPad start n =
+            take n $ flip map (iterate (+1) start) (\i ->
+                (True, FloatReg i))
+                -- FIXME: perhaps we should obtain the original type,
+                -- instead of just picking Float here? It should be fine
+                -- since this argument is not live anyways,
+                -- and Float aliases with all the other F/D regs.
+
 
 -- | Llvm standard fun attributes
 llvmStdFunAttrs :: [LlvmFuncAttr]
