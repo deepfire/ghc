@@ -152,7 +152,7 @@ llvmFunArgs dflags live =
     where platform = targetPlatform dflags
           allRegs = sortSSERegs $ activeStgRegs platform
           paddedLive = map (\(_,r) -> r) $ padLiveArgs live
-          isLive r = not (isSSE r) || r `elem` alwaysLive || r `elem` paddedLive
+          isLive r = r `elem` alwaysLive || r `elem` paddedLive
           isPassed r = not (isSSE r) || isLive r
           isSSE r
             | Just _ <- sseRegNum r = True
@@ -181,29 +181,30 @@ sortSSERegs regs = sortBy sseOrd regs
 -- assumes that the live list is sorted by Ord GlobalReg's compare function.
 -- the bool indicates whether the global reg was added as padding.
 padLiveArgs :: LiveGlobalRegs -> [(Bool, GlobalReg)]
-padLiveArgs live = reverse padded
+padLiveArgs live = padded
     where
         (_, padded) = foldl assignSlots (1, []) $ sortSSERegs live
 
         assignSlots (i, acc) r
             | Just k <- sseRegNum r
             , i < k
-            = let  -- add k-i slots of padding
+            = let  -- add k-i slots of padding before the register
                 diff = k-i
+                -- NOTE: order doesn't matter in acc, since it's like a set
                 acc' = genPad i diff ++ (False, r) : acc
                 i' = i + diff
               in
                 (i', acc')
 
-            | otherwise = (i, (False, r):acc)
+            | otherwise = (i+1, (False, r):acc)
 
         genPad start n =
             take n $ flip map (iterate (+1) start) (\i ->
                 (True, FloatReg i))
-                -- FIXME: perhaps we should obtain the original type,
-                -- instead of just picking Float here? It should be fine
-                -- since this argument is not live anyways,
-                -- and Float aliases with all the other F/D regs.
+                -- NOTE: Picking float should be fine for the following reasons:
+                -- (1) Float aliases with all the other SSE register types on
+                -- the given platform.
+                -- (2) The argument is not live anyways.
 
 
 -- | Llvm standard fun attributes
