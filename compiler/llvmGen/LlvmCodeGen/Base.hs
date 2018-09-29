@@ -58,7 +58,8 @@ import ErrUtils
 import qualified Stream
 
 import Control.Monad (ap)
-import Data.List (sortBy)
+import Data.List (sortBy, partition)
+import Data.Maybe (isJust)
 
 -- ----------------------------------------------------------------------------
 -- * Some Data Types
@@ -178,25 +179,33 @@ sortSSERegs regs = sortBy sseOrd regs
             (Just x, Just y) -> compare x y
             _                 -> EQ
 
--- assumes that the live list is sorted by Ord GlobalReg's compare function.
 -- the bool indicates whether the global reg was added as padding.
+-- the returned list is not sorted in any particular order,
+-- but does indicate the set of live registers needed, with SSE padding.
 padLiveArgs :: LiveGlobalRegs -> [(Bool, GlobalReg)]
-padLiveArgs live = padded
+padLiveArgs live = allRegs
     where
-        (_, padded) = foldl assignSlots (1, []) $ sortSSERegs live
+        (sse, others) = partition (isJust . sseRegNum) live
+        (_, padded) = foldl assignSlots (1, []) $ sortSSERegs sse
+        allRegs = padded ++ map (\r -> (False, r)) others
 
         assignSlots (i, acc) r
-            | Just k <- sseRegNum r
-            , i < k
-            = let  -- add k-i slots of padding before the register
-                diff = k-i
-                -- NOTE: order doesn't matter in acc, since it's like a set
-                acc' = genPad i diff ++ (False, r) : acc
-                i' = i + diff
-              in
-                (i', acc')
+            | Just k <- sseRegNum r =
+              if i == k
+                then -- don't need padding
+                    (i+1, (False, r):acc)
+                else let  -- add k-i slots of padding before the register
+                      diff = if i > k
+                              then error "padLiveArgs -- index should not be greater!"
+                              else k-i
 
-            | otherwise = (i+1, (False, r):acc)
+                      -- NOTE: order doesn't matter in acc, since it's like a set
+                      acc' = genPad i diff ++ (False, r) : acc
+                      i' = i + diff
+                    in
+                      (i', acc')
+            -- not an SSE reg, so just keep going
+            | otherwise = (i, (False, r):acc)
 
         genPad start n =
             take n $ flip map (iterate (+1) start) (\i ->
