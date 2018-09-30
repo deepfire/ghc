@@ -58,7 +58,7 @@ import ErrUtils
 import qualified Stream
 
 import Control.Monad (ap)
-import Data.List (sort, partition)
+import Data.List (sort)
 import Data.Maybe (mapMaybe)
 
 -- ----------------------------------------------------------------------------
