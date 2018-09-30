@@ -1819,13 +1819,6 @@ funEpilogue live = do
     let alwaysNeeded = map (\r -> (False, r)) alwaysLive
         livePadded = alwaysNeeded ++ padLiveArgs live
 
-        isSSE (FloatReg _)  = True
-        isSSE (DoubleReg _) = True
-        isSSE (XmmReg _)    = True
-        isSSE (YmmReg _)    = True
-        isSSE (ZmmReg _)    = True
-        isSSE _             = False
-
     -- Set to value or "undef" depending on whether the register is
     -- actually live
     dflags <- getDynFlags
@@ -1836,7 +1829,7 @@ funEpilogue live = do
           let ty = (pLower . getVarType $ lmGlobalRegVar dflags r)
           return (Just $ LMLitVar $ LMUndefLit ty, nilOL)
     platform <- getDynFlag targetPlatform
-    let allRegs = sortSSERegs $ activeStgRegs platform
+    let allRegs = activeStgRegs platform
     loads <- flip mapM allRegs $ \r -> case () of
       _ | (False, r) `elem` livePadded
                              -> loadExpr r   -- if r is not padding, load it

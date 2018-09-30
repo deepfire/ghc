@@ -26,7 +26,7 @@ module LlvmCodeGen.Base (
 
         cmmToLlvmType, widthToLlvmFloat, widthToLlvmInt, llvmFunTy,
         llvmFunSig, llvmFunArgs, llvmStdFunAttrs, llvmFunAlign, llvmInfAlign,
-        llvmPtrBits, tysToParams, llvmFunSection, padLiveArgs, sortSSERegs,
+        llvmPtrBits, tysToParams, llvmFunSection, padLiveArgs, isSSE,
 
         strCLabel_llvm, strDisplayName_llvm, strProcedureName_llvm,
         getGlobalPtr, generateExternDecls,
@@ -58,8 +58,8 @@ import ErrUtils
 import qualified Stream
 
 import Control.Monad (ap)
-import Data.List (sortBy, partition)
-import Data.Maybe (isJust)
+import Data.List (sort, partition)
+import Data.Maybe (mapMaybe)
 
 -- ----------------------------------------------------------------------------
 -- * Some Data Types
@@ -151,7 +151,7 @@ llvmFunArgs :: DynFlags -> LiveGlobalRegs -> [LlvmVar]
 llvmFunArgs dflags live =
     map (lmGlobalRegArg dflags) (filter isPassed allRegs)
     where platform = targetPlatform dflags
-          allRegs = sortSSERegs $ activeStgRegs platform
+          allRegs = activeStgRegs platform
           paddedLive = map (\(_,r) -> r) $ padLiveArgs live
           isLive r = r `elem` alwaysLive || r `elem` paddedLive
           isPassed r = not (isSSE r) || isLive r
@@ -159,6 +159,14 @@ llvmFunArgs dflags live =
             | Just _ <- sseRegNum r = True
             | otherwise = False
 
+
+isSSE :: GlobalReg -> Bool
+isSSE (FloatReg _)  = True
+isSSE (DoubleReg _) = True
+isSSE (XmmReg _)    = True
+isSSE (YmmReg _)    = True
+isSSE (ZmmReg _)    = True
+isSSE _             = False
 
 sseRegNum :: GlobalReg -> Maybe Int
 sseRegNum (FloatReg i)  = Just i
@@ -168,44 +176,25 @@ sseRegNum (YmmReg i)    = Just i
 sseRegNum (ZmmReg i)    = Just i
 sseRegNum _             = Nothing
 
--- Only sorts regs that will end up in SSE registers
--- such that the ones which are assigned to the same
--- register will be adjacent in the list. Other elements
--- are not reordered.
-sortSSERegs :: [GlobalReg] -> [GlobalReg]
-sortSSERegs regs = sortBy sseOrd regs
-    where
-        sseOrd a b = case (sseRegNum a, sseRegNum b) of
-            (Just x, Just y) -> compare x y
-            _                 -> EQ
-
 -- the bool indicates whether the global reg was added as padding.
 -- the returned list is not sorted in any particular order,
 -- but does indicate the set of live registers needed, with SSE padding.
 padLiveArgs :: LiveGlobalRegs -> [(Bool, GlobalReg)]
 padLiveArgs live = allRegs
     where
-        (sse, others) = partition (isJust . sseRegNum) live
-        (_, padded) = foldl assignSlots (1, []) $ sortSSERegs sse
-        allRegs = padded ++ map (\r -> (False, r)) others
+        sseRegNums = sort $ mapMaybe sseRegNum live
+        (_, padding) = foldl assignSlots (1, []) $ sseRegNums
+        allRegs = padding ++ map (\r -> (False, r)) live
 
-        assignSlots (i, acc) r
-            | Just k <- sseRegNum r =
-              if i == k
-                then -- don't need padding
-                    (i+1, (False, r):acc)
-                else let  -- add k-i slots of padding before the register
-                      diff = if i > k
-                              then error "padLiveArgs -- index should not be greater!"
-                              else k-i
-
-                      -- NOTE: order doesn't matter in acc, since it's like a set
-                      acc' = genPad i diff ++ (False, r) : acc
-                      i' = i + diff
-                    in
-                      (i', acc')
-            -- not an SSE reg, so just keep going
-            | otherwise = (i, (False, r):acc)
+        assignSlots (i, acc) regNum
+            | i == regNum = -- don't need padding here
+                  (i+1, acc)
+            | i < regNum = let -- add padding for slots i .. regNum-1
+                  numNeeded = regNum-i
+                  acc' = genPad i numNeeded ++ acc
+                in
+                  (regNum+1, acc')
+            | otherwise = error "padLiveArgs -- i > regNum ??"
 
         genPad start n =
             take n $ flip map (iterate (+1) start) (\i ->
