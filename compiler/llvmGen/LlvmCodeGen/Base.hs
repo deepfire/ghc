@@ -155,9 +155,6 @@ llvmFunArgs dflags live =
           paddedLive = map (\(_,r) -> r) $ padLiveArgs live
           isLive r = r `elem` alwaysLive || r `elem` paddedLive
           isPassed r = not (isSSE r) || isLive r
-          isSSE r
-            | Just _ <- sseRegNum r = True
-            | otherwise = False
 
 
 isSSE :: GlobalReg -> Bool
