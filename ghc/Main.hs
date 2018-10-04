@@ -128,6 +128,9 @@ main = do
             GHC.runGhc mbMinusB $ do
 
             dflags <- GHC.getSessionDynFlags
+            ifVerbose dflags 3 $ do
+              logInfo dflags (defaultUserStyle dflags)
+                (text "***" <+> text "ghc" <+> text (intercalate " " argv0))
 
             case postStartupMode of
                 Left preLoadMode ->
