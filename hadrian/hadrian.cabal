@@ -126,7 +126,8 @@ executable hadrian
                        , shake                >= 0.16.4
                        , transformers         >= 0.4     && < 0.6
                        , unordered-containers >= 0.2.1   && < 0.3
-    build-tools:         alex  >= 3.1
+    build-tools-depends:
+                         alex  >= 3.1
                        , happy >= 1.19.4
     ghc-options:       -Wall
                        -Wincomplete-record-updates
