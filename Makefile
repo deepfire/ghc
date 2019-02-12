@@ -77,9 +77,21 @@ default : all
 help:
 	@cat MAKEHELP.md
 
+it-so-: Begin.hs Inter.hs Finish.hs
+	rm -f *.{o,hi,*~}
+	./inplace/bin/ghc-stage2 Finish.hs
+	./inplace/bin/ghc-stage2 --show-iface Inter.hi
+
+it-so:  Begin.hs Inter.hs Finish.hs
+	cd compiler;  make 2
+	rm -f *.{o,hi,*~}
+	./inplace/bin/ghc-stage2 Finish.hs
+	./inplace/bin/ghc-stage2 --show-iface Inter.hi
+
 # No need to update makefiles for these targets:
 # (the ones we're filtering out)
 REALGOALS=$(filter-out \
+    it-so it-so- \
     binary-dist \
     binary-dist-prep \
     install-strip \

@@ -1,0 +1,189 @@
+* Types
+*** 
+*** GRE
+    - [[file:compiler/basicTypes/RdrName.hs::type%20GlobalRdrEnv%20=%20OccEnv%20%5BGlobalRdrElt%5D][type GlobalRdrEnv = OccEnv {GlobalRdrElt}]]
+    - [[file:compiler/basicTypes/OccName.hs::newtype%20OccEnv%20a%20=%20A%20(UniqFM%20a)][newtype OccEnv a = A (UniqFM a)]]
+    - [[file:compiler/utils/UniqFM.hs::newtype%20UniqFM%20ele%20=%20UFM%20(M.IntMap%20ele)][newtype UniqFM ele = UFM (M.IntMap ele)]]
+    - [[file:compiler/basicTypes/RdrName.hs::globalRdrEnvElts%20::%20GlobalRdrEnv%20->%20%5BGlobalRdrElt%5D][globalRdrEnvElts :: GlobalRdrEnv -> {GlobalRdrElt}]]
+*** IE
+    - [[file:compiler/hsSyn/HsImpExp.hs::type%20LIE%20pass%20=%20Located%20(IE%20pass)][type LIE pass = Located (IE pass)   compiler/hsSyn/HsImpExp.hs]]
+    - [[file:compiler/hsSyn/HsImpExp.hs::data%20IE%20pass][data IE pass   compiler/hsSyn/HsImpExp.hs]]
+      - [[file:compiler/parser/Parser.y::maybealiases%20::%20{%20Located%20(Maybe%20(Bool,%20Located%20%5BLIE%20GhcPs%5D))%20}][maybealiases :: { Located (Maybe (Bool, Located {LIE GhcPs})) }]]
+      - [[file:compiler/hsSyn/HsImpExp.hs::|%20IEModuleContents%20(XIEModuleContents%20pass)%20(Located%20ModuleName)%20(Maybe%20(Located%20ModuleName))][IEModuleContents (XIEModuleContents pass) (Located ModuleName) (Maybe (Located ModuleName))]]
+        - [[file:compiler/parser/Parser.y::|%20'module'%20modid%20maybeexpas%20{%25%20amsu%20(sLL%20$1%20$>%20(IEModuleContents%20noExt%20$2%20$3))][| 'module' modid maybeexpas {% amsu (sLL $1 $> (IEModuleContents noExt $2 $3))]]
+        - [[file:compiler/parser/Parser.y::modid%20::%20{%20Located%20ModuleName%20}][modid :: { Located ModuleName }]]
+        - [[file:compiler/hieFile/HieAst.hs::%5B%20toHie%20$%20IEC%20c%20n][{ toHie $ IEC c n]]
+*** ???
+    - [[file:compiler/typecheck/TcRnExports.hs::exports_from_avail%20(Just%20(dL->L%20_%20rdr_items))%20rdr_env%20imports%20this_mod][exports_from_avail (Just (dL->L _ rdr_items)) rdr_env imports this_mod]]
+*** ImportDecl
+    - [[file:compiler/main/HscTypes.hs::data%20ImportedModsVal][data ImportedModsVal   = ImportedModsVal]]
+    - [[file:compiler/basicTypes/RdrName.hs::data%20ImpDeclSpec][data ImpDeclSpec       = ImpDeclSpec]]
+    - [[file:compiler/hsSyn/HsImpExp.hs::data%20ImportDecl%20pass][data ImportDecl pass   = ImportDecl | XImportDecl]]
+*** ModIface
+    - [[file:compiler/main/HscTypes.hs::data%20ModGuts][data ModGuts]]
+    - [[file:compiler/main/HscTypes.hs::data%20ModDetails][data ModDetails]]
+    - [[file:compiler/main/HscTypes.hs::data%20ModIface][data ModIface]]
+      - [[file:compiler/main/HscTypes.hs::mi_exports%20::%20!%5BIfaceExport%5D,][mi_exports]]       :: ![[[file:compiler/main/HscTypes.hs::type%20IfaceExport%20=%20AvailInfo][IfaceExport]]] -- type IfaceExport = [[file:compiler/basicTypes/Avail.hs::data%20AvailInfo%20=%20Avail%20Name%20--%20^%20An%20ordinary%20identifier%20in%20scope][AvailInfo]]
+        data AvailInfo = Avail Name | AvailTC Name [Name] [FieldLabel]
+      - mi_decls         :: [(Fingerprint,[[file:compiler/iface/IfaceSyn.hs::data%20IfaceDecl][IfaceDecl]])]
+        = IfaceId | IfaceData | IfaceSynonym | IfaceFamily | IfaceClass | IfaceAxiom | IfacePatSyn
+      - mi_globals       :: Maybe [[file:compiler/basicTypes/RdrName.hs::type%20GlobalRdrEnv%20=%20OccEnv%20%5BGlobalRdrElt%5D][GlobalRdrEnv]]
+      - mi_deps          :: [[file:compiler/main/HscTypes.hs::data%20Dependencies][Dependencies]]
+      - mi_complete_sigs :: [[[file:compiler/iface/IfaceSyn.hs::data%20IfaceCompleteMatch%20=%20IfaceCompleteMatch%20%5BIfExtName%5D%20IfExtName][IfaceCompleteMatch]]]
+        data IfaceCompleteMatch = IfaceCompleteMatch [[[file:compiler/iface/IfaceType.hs::type%20IfExtName%20=%20Name%20--%20An%20External%20or%20WiredIn%20Name%20can%20appear%20in%20IfaceSyn][IfExtName]]] [[file:compiler/iface/IfaceType.hs::type%20IfExtName%20=%20Name%20--%20An%20External%20or%20WiredIn%20Name%20can%20appear%20in%20IfaceSyn][IfExtName]]
+* Notes
+    - [[file:libraries/ghc-prim/GHC/Types.hs::{-%20Note%20%5BRuntime%20representation%20of%20modules%20and%20tycons%5D][Runtime representation of modules and tycons]]      ghc-prim/GHC/Types.hs
+    - [[file:compiler/iface/MkIface.hs::Note%20%5BOriginal%20module%5D][Original module]]                                   iface/MkIface.hs
+    - [[file:compiler/iface/TcIface.hs::--%20Note%20%5BResolving%20never-exported%20Names%20in%20TcIface%5D][Resolving never-exported Names in TcIface]]         iface/TcIface.hs
+    - [[file:compiler/iface/BinIface.hs::--%20Note%20%5BSymbol%20table%20representation%20of%20names%5D][Symbol table representation of names]]              iface/BinIface.hs
+    - [[file:compiler/iface/MkIface.hs::Note%20%5BThe%20ABI%20of%20an%20IfaceDecl%5D][The ABI of an IfaceDecl]]                           iface/MkIface.hs
+    - [[file:compiler/iface/LoadIface.hs::%20--%20Note%20%5BTricky%20iface%20loop%5D][Tricky iface loop]]                                 iface/LoadIface.hs
+    - [[file:compiler/iface/TcIface.hs::--%20Note%20%5BTying%20the%20knot%5D][Tying the knot]]                                    iface/TcIface.hs
+    - [[file:compiler/iface/IfaceType.hs::GHC%20has%20several%20varieties%20of%20type%20equality][Equality predicates in IfaceType]]                  iface/IfaceType.hs
+* Terminology
+  - IE :: Import Entry
+  - LIE :: Located Import Entry
+  - EPS :: External Package State
+    - HPT :: * * Table
+    - PIT :: * * Table
+  - GRE - Global Reader Environment :: OccName → [GlobalRdrElt]
+  - home module ::
+  - Implicit TyThings ::
+      DEFINITION: An "implicit" TyThing is one that does not have its own
+      IfaceDecl in an interface file.  Instead, its binding in the type
+      environment is created as part of typechecking the IfaceDecl for
+      some other thing.
+
+    Examples:
+      * All DataCons are implicit, because they are generated from the
+        IfaceDecl for the data/newtype.  Ditto class methods.
+
+      * Record selectors are *not* implicit, because they get their own
+        free-standing IfaceDecl.
+
+      * Associated data/type families are implicit because they are
+        included in the IfaceDecl of the parent class.  (NB: the
+        IfaceClass decl happens to use IfaceDecl recursively for the
+        associated types, but that's irrelevant here.)
+
+      * Dictionary function Ids are not implicit.
+
+      * Axioms for newtypes are implicit (same as above), but axioms
+        for data/type family instances are *not* implicit (like DFunIds).
+* Information flow
+  - interface -> String
+    - [[file:ghc/Main.hs::=%20ShowInterface%20FilePath%20--%20ghc%20--show-iface][ShowInterface FilePath -- ghc --show-iface]]
+      - [[file:ghc/Main.hs::doShowIface%20::%20DynFlags%20->%20FilePath%20->%20IO%20()][doShowIface :: DynFlags -> FilePath -> IO ()]]
+        - [[file:compiler/iface/LoadIface.hs::showIface%20::%20HscEnv%20->%20FilePath%20->%20IO%20()][showIface :: HscEnv -> FilePath -> IO ()]]
+          - readBinIface IgnoreHiWay TraceBinIFaceReading filename
+          - [[file:compiler/iface/LoadIface.hs::pprModIface%20::%20ModIface%20->%20SDoc][pprModIface :: ModIface -> SDoc]]
+  - source file → compiler → exports
+    - [[file:compiler/parser/Parser.y::exportlist%20::%20{%20OrdList%20(LIE%20GhcPs)%20}][exportlist :: { OrdList (LIE GhcPs) }]]
+      - [[file:compiler/parser/Parser.y::export%20::%20{%20OrdList%20(LIE%20GhcPs)%20}][export :: { OrdList (LIE GhcPs) }]]
+        - [[file:compiler/parser/RdrHsSyn.hs::mkModuleImpExp%20::%20Located%20ImpExpQcSpec%20->%20ImpExpSubSpec%20->%20P%20(IE%20GhcPs)][mkModuleImpExp :: Located ImpExpQcSpec -> ImpExpSubSpec -> P (IE GhcPs)]]
+        - [[file:compiler/hsSyn/HsImpExp.hs::|%20IEModuleContents%20(XIEModuleContents%20pass)%20(Located%20ModuleName)][IEModuleContents (XIEModuleContents pass) (Located ModuleName)]]
+  - source file → compiler → interface
+    - tcRnModule
+      - tcRnModuleTcRnM, tcRnImportDecls
+        - [[file:compiler/typecheck/TcRnDriver.hs::tcRnImports%20::%20HscEnv%20->%20%5BLImportDecl%20GhcPs%5D%20->%20TcM%20TcGblEnv][tcRnImports :: HscEnv -> {LImportDecl GhcPs} -> TcM TcGblEnv]]
+          - [[file:compiler/rename/RnNames.hs::rnImports%20::%20%5BLImportDecl%20GhcPs%5D][rnImports :: {LImportDecl GhcPs}]]
+            - [[file:compiler/rename/RnNames.hs::rnImportDecl%20::%20Module%20->%20LImportDecl%20GhcPs][rnImportDecl :: Module -> LImportDecl GhcPs]]
+              - maybe honor missingImportListWarn for level-1's
+              - iface <- [[file:compiler/iface/LoadIface.hs::loadSrcInterface_maybe%20::%20SDoc][loadSrcInterface]] want_boot (fmap sl_fs mb_pkg)
+                - [[file:compiler/iface/LoadIface.hs::loadInterface%20::%20SDoc%20->%20Module%20->%20WhereFrom][loadInterface :: SDoc -> Module -> WhereFrom]]
+                  - lookupIfaceByModule
+                  - [[file:compiler/iface/LoadIface.hs::computeInterface%20doc_str%20hi_boot_file%20mod0%20=%20do][compiler/iface/LoadIface.hs   computeInterface doc_str hi_boot_file mod0 = do]]
+                    - [[file:compiler/iface/LoadIface.hs::findAndReadIface%20doc_str%20mod%20wanted_mod_with_insts%20hi_boot_file][compiler/iface/LoadIface.hs   findAndReadIface doc_str mod wanted_mod_with_insts hi_boot_file]]
+                      - findExactModule
+                      - [[file:compiler/iface/LoadIface.hs::readIface%20::%20Module%20->%20FilePath][compiler/iface/LoadIface.hs   readIface :: Module -> FilePath]] [[file:compiler/iface/LoadIface.hs::readIface%20wanted_mod%20file_path][compiler/iface/LoadIface.hs   readIface wanted_mod file_path]]
+                        - [[file:compiler/iface/BinIface.hs::readBinIface%20checkHiWay%20traceBinIFaceReading%20hi_path%20=%20do][compiler/iface/BinIface.hs   readBinIface checkHiWay traceBinIFaceReading hi_path = do]]
+                          - [[file:compiler/iface/BinIface.hs::readBinIface_%20dflags%20checkHiWay%20traceBinIFaceReading%20hi_path%20ncu%20=%20do][compiler/iface/BinIface.hs   readBinIface_ dflags checkHiWay traceBinIFaceReading hi_path ncu = do]]
+                            - Binary.readBinMem
+                            - [[file:compiler/iface/BinIface.hs::getWithUserData%20::%20Binary%20a%20=>%20NameCacheUpdater%20->%20BinHandle%20->%20IO%20a][compiler/iface/BinIface.hs   getWithUserData :: Binary a => NameCacheUpdater -> BinHandle -> IO a]]
+                              -- | This performs a get action after reading the dictionary and symbol
+                              -- table. It is necessary to run this before trying to deserialise any
+                              -- Names or FastStrings.
+                              - [[file:compiler/utils/Binary.hs::getDictionary%20::%20BinHandle%20->%20IO%20Dictionary][compiler/utils/Binary.hs  getDictionary :: BinHandle -> IO Dictionary]]
+                              - [[file:compiler/iface/BinIface.hs::getSymbolTable%20::%20BinHandle%20->%20NameCacheUpdater%20->%20IO%20SymbolTable][compiler/iface/BinIface.hs   getSymbolTable :: BinHandle -> NameCacheUpdater -> IO SymbolTable]]
+                                - [[file:compiler/iface/BinIface.hs::fromOnDiskName%20::%20NameCache%20->%20OnDiskName%20->%20(NameCache,%20Name)][compiler/iface/BinIface.hs   fromOnDiskName :: NameCache -> OnDiskName -> (NameCache, Name)]]
+                                  - mkModule, takeUniqFromSupply, mkExternalName, extendNameCache
+                    - [[file:compiler/backpack/RnModIface.hs::rnModIface%20hsc_env%20insts%20nsubst%20iface%20=%20do][compiler/backpack/RnModIface.hs   rnModIface hsc_env insts nsubst iface = do]]
+                      - sig_of <- fmap Just (rnModule x) $ mi_sig_of iface
+                      - mod <- rnModule (mi_module iface)
+                      - exports <- mapM rnAvailInfo (mi_exports iface)
+                        - [[file:compiler/backpack/RnModIface.hs::rnAvailInfo%20::%20Rename%20AvailInfo][compiler/backpack/RnModIface.hs   rnAvailInfo :: Rename AvailInfo]]
+                          - [[file:compiler/backpack/RnModIface.hs::rnIfaceGlobal%20::%20Name%20->%20ShIfM%20Name][compiler/backpack/RnModIface.hs   rnIfaceGlobal :: Name -> ShIfM Name]]
+                          - [[file:compiler/backpack/RnModIface.hs::rnFieldLabel%20::%20Rename%20FieldLabel][compiler/backpack/RnModIface.hs   rnFieldLabel :: Rename FieldLabel]]
+                          - [[file:compiler/iface/IfaceEnv.hs::setNameModule%20::%20Maybe%20Module%20->%20Name%20->%20TcRnIf%20m%20n%20Name][compiler/iface/IfaceEnv.hs   setNameModule :: Maybe Module -> Name -> TcRnIf m n Name]]
+                      - decls <- mapM rnIfaceDecl' (mi_decls iface)
+                        - [[file:compiler/backpack/RnModIface.hs::rnIfaceDecl%20::%20Rename%20IfaceDecl][compiler/backpack/RnModIface.hs   rnIfaceDecl :: Rename IfaceDecl]]
+                      - insts <- mapM rnIfaceClsInst (mi_insts iface)
+                      - fams <- mapM rnIfaceFamInst (mi_fam_insts iface)
+                      - deps <- rnDependencies (mi_deps iface)
+                      - iface :: { mod, sig_of, insts, fams, exports, decls, deps }
+                  - mapM (loadDecl ignore_prags) <- mi_decls         iface
+                  - mapM tcIfaceInst             <- mi_insts         iface
+                  - mapM tcIfaceFamInst          <- mi_fam_insts     iface
+                  - tcIfaceRules ignore_prags    <- mi_rules         iface
+                  - tcIfaceAnnotations           <- mi_anns          iface
+                  - tcIfaceCompleteSigs          <- mi_complete_sigs iface
+                  - addDeclsToPTE, extendModule{Env,MatchMap}, extend{,Ann,Fam}InstEnvList, addEpsInStats
+                  - updateEps_
+              - [[file:compiler/rename/RnNames.hs::filterImports%20iface%20decl_spec%20(Just%20(want_hiding,%20L%20l%20import_items))][filterImports iface decl_spec (Just (want_hiding, L l import_items))]]
+                - --> want_hiding :: Bool, import_items :: Located [LIE GhcPs]
+                - <-- :: RnM (Maybe (Bool, Located [LIE GhcRn]), [GlobalRdrElt])
+                  - want_hiding
+                  - map fst items2 <- concat items1 <- mapM lookup_lie import_items
+                  - gres <- gresFromAvails <- pruned_avails <- filterAvails keep <- all_avails <- mi_exports iface
+                         <- concatMap gresFromIE items2
+              - imp_spec <- ImpDeclSpec
+              - (new_imp_decl, gres) <- (filterImports <- (iface, imp_details, imp_spec)
+              - potential_gres <- mkGlobalRdrEnv <- filterImports <- imp_spec
+              - <-- :: RnM (LImportDecl GhcRn, GlobalRdrEnv, ImportAvails, AnyHpcUsage)
+                - new_imp_decl
+                - gbl_env <- mkGlobalRdrEnv <- gres
+                - imports <- calculateAvails <- ImportedModsVal potential_gres
+                - mi_hpc <- iface <- loadSrcInterface
+  - interface -> compiler
+    - [[file:compiler/iface/BinIface.hs::writeBinIface%20::%20DynFlags%20->%20FilePath%20->%20ModIface%20->%20IO%20()][compiler/iface/BinIface.hs   writeBinIface :: DynFlags -> FilePath -> ModIface -> IO ()]]
+      - openBinMem
+      - [[file:compiler/iface/BinIface.hs::putWithUserData%20::%20Binary%20a%20=>%20(SDoc%20->%20IO%20())%20->%20BinHandle%20->%20a%20->%20IO%20()][compiler/iface/BinIface.hs   putWithUserData :: Binary a => (SDoc -> IO ()) -> BinHandle -> a -> IO ()]]
+        - bh <- return $ setUserData bh $ newWriteState $ (putName bin_dict bin_symtab)
+        - put_ bh payload
+        - symtab_p <- tellBin bh
+        - [[file:compiler/iface/BinIface.hs::putSymbolTable%20::%20BinHandle%20->%20Int%20->%20UniqFM%20(Int,Name)%20->%20IO%20()][compiler/iface/BinIface.hs   putSymbolTable :: BinHandle -> Int -> UniqFM (Int,Name) -> IO ()]] putSymbolTable bh symtab_next symtab_map
+          - [[file:compiler/iface/BinIface.hs::serialiseName%20::%20BinHandle%20->%20Name%20->%20UniqFM%20(Int,Name)%20->%20IO%20()][compiler/iface/BinIface.hs   serialiseName :: BinHandle -> Name -> UniqFM (Int,Name) -> IO ()]]
+            - put_ bh (moduleUnitId mod, moduleName mod, nameOccName name)
+        - [[file:compiler/utils/Binary.hs::putDictionary%20::%20BinHandle%20->%20Int%20->%20UniqFM%20(Int,FastString)%20->%20IO%20()][compiler/utils/Binary.hs   putDictionary :: BinHandle -> Int -> UniqFM (Int,FastString) -> IO ()]] bh dict_next dict_map
+      - writeBinMem
+* Functions
+*** ModIface
+    - [[file:compiler/main/HscTypes.hs::instance%20Binary%20ModIface%20where][compiler/main/HscTypes.hs   instance Binary ModIface where]]
+    - [[file:compiler/parser/Parser.y::maybealiases%20::%20{%20Located%20(Maybe%20(Bool,%20Located%20%5BLIE%20GhcPs%5D))%20}][compiler/parser/Parser.y   maybealiases :: { Located (Maybe (Bool, Located {LIE GhcPs})) }]]
+      - [[file:compiler/parser/RdrHsSyn.hs::checkImportSpec%20::%20Located%20%5BLIE%20GhcPs%5D%20->%20P%20(Located%20%5BLIE%20GhcPs%5D)][compiler/parser/RdrHsSyn.hs   checkImportSpec :: Located {LIE GhcPs} -> P (Located {LIE GhcPs})]]
+* Changes
+  - parser support for =aliases= and =aliases_hiding=
+    - [[file:compiler/parser/Parser.y::'aliases'%20{%20L%20_%20ITaliases%20}][compiler/parser/Parser.y  'aliases' { L _ ITaliases }]]
+      - [[file:compiler/parser/Lexer.x::|%20ITaliases][compiler/parser/Lexer.x   ITaliases]]
+  - import declaration
+    - [[file:compiler/parser/Parser.y::importdecl%20::%20{%20LImportDecl%20GhcPs%20}][compiler/parser/Parser.y   importdecl :: { LImportDecl GhcPs }]]
+      - [[file:compiler/parser/Parser.y::,%20ideclAliases%20=%20unLoc%20$9%20})%20--%20XXX%20StructuredImports][compiler/parser/Parser.y   ideclAliases = unLoc $9 })]]
+        - [[file:compiler/hsSyn/HsImpExp.hs::ideclAliases%20::%20Maybe%20(Bool,%20Located%20%5BLIE%20pass%5D)][compiler/hsSyn/HsImpExp.hs   ImportDecl.ideclAliases :: Maybe (Bool, Located {LIE pass})]]
+          - LIE
+            - IE
+      - [[file:compiler/parser/Parser.y::maybealiases%20::%20{%20Located%20(Maybe%20(Bool,%20Located%20%5BLIE%20GhcPs%5D))%20}][compiler/parser/Parser.y   maybealiases :: { Located (Maybe (Bool, Located {LIE GhcPs})) }]]
+        - [[file:compiler/parser/Parser.y::aliasesspec%20::%20{%20Located%20(Bool,%20Located%20%5BLIE%20GhcPs%5D)%20}][compiler/parser/Parser.y   aliasesspec :: { Located (Bool, Located {LIE GhcPs}) }]]
+          - [[file:compiler/parser/ApiAnnotation.hs::=%20AnnAliases][compiler/parser/ApiAnnotation.hs   AnnAliases]]
+          - [[file:compiler/parser/ApiAnnotation.hs::|%20AnnAliasesHiding][compiler/parser/ApiAnnotation.hs   AnnAliasesHiding]]
+  - negotiating extension: 'StructuredImports'
+    - [[file:compiler/main/DynFlags.hs::flagSpec%20"StructuredImports"%20LangExt.StructuredImports,][compiler/main/DynFlags.hs   flagSpec "StructuredImports" LangExt.StructuredImports,]]
+    - [[file:compiler/parser/Lexer.x::|%20StructuredImportsBit][compiler/parser/Lexer.x   StructuredImportsBit]]
+    - [[file:compiler/parser/Lexer.x::.|.%20StructuredImportsBit%20`xoptBit`%20LangExt.StructuredImports][compiler/parser/Lexer.x   .|. StructuredImportsBit `xoptBit` LangExt.StructuredImports]]
+    - [[file:libraries/ghc-boot-th/GHC/LanguageExtensions/Type.hs::|%20StructuredImports][libraries/ghc-boot-th/GHC/LanguageExtensions/Type.hs   StructuredImports]]
+* Incidental changes
+  - def [[file:compiler/main/HeaderInfo.hs::ideclAliases%20=%20Nothing%20}]]
+  - def [[file:compiler/hsSyn/HsImpExp.hs::ideclAliases%20=%20Nothing]]
+  - ppr [[file:compiler/hsSyn/HsImpExp.hs::4%20(hsep%20%5Bpp_spec%20spec,%20pp_aliases%20aliases_spec%5D)][compiler/hsSyn/HsImpExp.hs   4 (hsep {pp_spec spec, pp_aliases aliases_spec})]]
+* Random thoughts
+  - What are compiler perf costs of cross-cutting features, like Safe Haskell?
+  - mi_deps look costly!
