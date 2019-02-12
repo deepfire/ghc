@@ -134,7 +134,8 @@ mkPrelImports this_mod loc implicit_prelude import_decls
                                 ideclQualified = False,
                                 ideclImplicit  = True,   -- Implicit!
                                 ideclAs        = Nothing,
-                                ideclHiding    = Nothing  }
+                                ideclHiding    = Nothing,
+                                ideclAliases   = Nothing  }
 
 parseError :: DynFlags -> SrcSpan -> MsgDoc -> IO a
 parseError dflags span err = throwOneError $ mkPlainErrMsg dflags span err

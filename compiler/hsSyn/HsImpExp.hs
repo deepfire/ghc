@@ -63,8 +63,10 @@ data ImportDecl pass
       ideclQualified :: Bool,          -- ^ True => qualified
       ideclImplicit  :: Bool,          -- ^ True => implicit import (of Prelude)
       ideclAs        :: Maybe (Located ModuleName),  -- ^ as Module
-      ideclHiding    :: Maybe (Bool, Located [LIE pass])
+      ideclHiding    :: Maybe (Bool, Located [LIE pass]),
                                        -- ^ (True => hiding, names)
+      ideclAliases   :: Maybe (Bool, Located [LIE pass])
+                                       -- ^ (True => aliases_hiding, names)
     }
   | XImportDecl (XXImportDecl pass)
      -- ^
@@ -98,7 +100,8 @@ simpleImportDecl mn = ImportDecl {
       ideclImplicit  = False,
       ideclQualified = False,
       ideclAs        = Nothing,
-      ideclHiding    = Nothing
+      ideclHiding    = Nothing,
+      ideclAliases   = Nothing
     }
 
 instance (p ~ GhcPass pass,OutputableBndrId p)
@@ -107,10 +110,12 @@ instance (p ~ GhcPass pass,OutputableBndrId p)
                     , ideclPkgQual = pkg
                     , ideclSource = from, ideclSafe = safe
                     , ideclQualified = qual, ideclImplicit = implicit
-                    , ideclAs = as, ideclHiding = spec })
+                    , ideclAs = as
+                    , ideclHiding = spec
+                    , ideclAliases = aliases_spec })
       = hang (hsep [text "import", ppr_imp from, pp_implicit implicit, pp_safe safe,
                     pp_qual qual, pp_pkg pkg, ppr mod', pp_as as])
-             4 (pp_spec spec)
+             4 (hsep [pp_spec spec, pp_aliases aliases_spec])
       where
         pp_implicit False = empty
         pp_implicit True = ptext (sLit ("(implicit)"))
@@ -136,6 +141,10 @@ instance (p ~ GhcPass pass,OutputableBndrId p)
         pp_spec Nothing             = empty
         pp_spec (Just (False, (L _ ies))) = ppr_ies ies
         pp_spec (Just (True, (L _ ies))) = text "hiding" <+> ppr_ies ies
+
+        pp_aliases Nothing             = empty
+        pp_aliases (Just (False, (L _ ies))) = text "aliases"        <+> ppr_ies ies
+        pp_aliases (Just (True,  (L _ ies))) = text "aliases_hiding" <+> ppr_ies ies
 
         ppr_ies []  = text "()"
         ppr_ies ies = char '(' <+> interpp'SP ies <+> char ')'
@@ -214,7 +223,7 @@ data IE pass
         --                                   'ApiAnnotation.AnnType'
 
         -- For details on above see note [Api annotations] in ApiAnnotation
-  | IEModuleContents  (XIEModuleContents pass) (Located ModuleName)
+  | IEModuleContents  (XIEModuleContents pass) (Located ModuleName) (Maybe (Located ModuleName))
         -- ^ Imported or exported module contents
         --
         -- (Export Only)
@@ -311,8 +320,10 @@ instance (p ~ GhcPass pass,OutputableBndrId p) => Outputable (IE p) where
               IEWildcard pos ->
                 let (bs, as) = splitAt pos (map (ppr . unLoc) withs)
                 in bs ++ [text ".."] ++ as
-    ppr (IEModuleContents _ mod')
-        = text "module" <+> ppr mod'
+    ppr (IEModuleContents _ mod' mL1N)
+        = text "module" <+> ppr mod' <+> case mL1N of
+                                           Just l1N -> text "as" <+> ppr l1N
+                                           Nothing  -> text ""
     ppr (IEGroup _ n _)           = text ("<IEGroup: " ++ show n ++ ">")
     ppr (IEDoc _ doc)             = ppr doc
     ppr (IEDocNamed _ string)     = text ("<IEDocNamed: " ++ string ++ ">")

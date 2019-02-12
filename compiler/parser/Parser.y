@@ -499,6 +499,8 @@ are the most common patterns, rewritten as regular expressions for clarity:
  'stock'        { L _ ITstock }    -- for DerivingStrategies extension
  'anyclass'     { L _ ITanyclass } -- for DerivingStrategies extension
  'via'          { L _ ITvia }      -- for DerivingStrategies extension
+ 'aliases'      { L _ ITaliases }
+ 'aliases_hiding'      { L _ ITaliases_hiding }
 
  'unit'         { L _ ITunit }
  'signature'    { L _ ITsignature }
@@ -875,7 +877,7 @@ exp_doc :: { OrdList (LIE GhcPs) }
 export  :: { OrdList (LIE GhcPs) }
         : qcname_ext export_subspec  {% mkModuleImpExp $1 (snd $ unLoc $2)
                                           >>= \ie -> amsu (sLL $1 $> ie) (fst $ unLoc $2) }
-        |  'module' modid            {% amsu (sLL $1 $> (IEModuleContents noExt $2))
+        |  'module' modid maybeexpas {% amsu (sLL $1 $> (IEModuleContents noExt $2 (sequence $3)))
                                              [mj AnnModule $1] }
         |  'pattern' qcon            {% amsu (sLL $1 $> (IEVar noExt (sLL $1 $> (IEPattern $2))))
                                              [mj AnnPattern $1] }
@@ -886,6 +888,9 @@ export_subspec :: { Located ([AddAnn],ImpExpSubSpec) }
                                       >>= \(as,ie) -> return $ sLL $1 $>
                                             (as ++ [mop $1,mcp $3] ++ fst $2, ie) }
 
+maybeexpas :: { Located (Maybe ModuleName) }
+        : 'as' modid              { sLL $1 $> (Just (unLoc $2)) }
+        | {- empty -}             { noLoc Nothing }
 
 qcnames :: { ([AddAnn], [Located ImpExpQcSpec]) }
   : {- empty -}                   { ([],[]) }
@@ -952,7 +957,7 @@ importdecls_semi
         | {- empty -}           { [] }
 
 importdecl :: { LImportDecl GhcPs }
-        : 'import' maybe_src maybe_safe optqualified maybe_pkg modid maybeas maybeimpspec
+        : 'import' maybe_src maybe_safe optqualified maybe_pkg modid maybeas maybeimpspec maybealiases
                 {% ams (cL (comb4 $1 $6 (snd $7) $8) $
                   ImportDecl { ideclExt = noExt
                              , ideclSourceSrc = snd $ fst $2
@@ -960,7 +965,8 @@ importdecl :: { LImportDecl GhcPs }
                              , ideclSource = snd $2, ideclSafe = snd $3
                              , ideclQualified = snd $4, ideclImplicit = False
                              , ideclAs = unLoc (snd $7)
-                             , ideclHiding = unLoc $8 })
+                             , ideclHiding = unLoc $8
+                             , ideclAliases = unLoc $9 })
                    ((mj AnnImport $1 : (fst $ fst $2) ++ fst $3 ++ fst $4
                                     ++ fst $5 ++ fst $7)) }
 
@@ -1000,12 +1006,27 @@ maybeimpspec :: { Located (Maybe (Bool, Located [LIE GhcPs])) }
         | {- empty -}              { noLoc Nothing }
 
 impspec :: { Located (Bool, Located [LIE GhcPs]) }
-        :  '(' exportlist ')'               {% ams (sLL $1 $> (False,
+        :           '(' exportlist ')'      {% ams (sLL $1 $> (False,
                                                       sLL $1 $> $ fromOL $2))
                                                    [mop $1,mcp $3] }
         |  'hiding' '(' exportlist ')'      {% ams (sLL $1 $> (True,
                                                       sLL $1 $> $ fromOL $3))
                                                [mj AnnHiding $1,mop $2,mcp $4] }
+
+maybealiases :: { Located (Maybe (Bool, Located [LIE GhcPs])) }
+        : aliasesspec              {% let (b, ie) = unLoc $1 in
+                                       checkImportSpec ie
+                                        >>= \checkedIe ->
+                                          return (cL (gl $1) (Just (b, checkedIe)))  }
+        | {- empty -}              { noLoc Nothing }
+
+aliasesspec :: { Located (Bool, Located [LIE GhcPs]) }
+        :  'aliases'        '(' exportlist ')' {% ams (sLL $1 $> (False,
+                                                      sLL $1 $> $ fromOL $3))
+                                                   [mop $2,mcp $4] }
+        |  'aliases_hiding' '(' exportlist ')' {% ams (sLL $1 $> (True,
+                                                      sLL $1 $> $ fromOL $3))
+                                               [mj AnnAliasesHiding $1,mop $2,mcp $4] }
 
 -----------------------------------------------------------------------------
 -- Fixity Declarations

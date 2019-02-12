@@ -238,7 +238,8 @@ exports_from_avail (Just (dL->L _ rdr_items)) rdr_env imports this_mod
     exports_from_item :: ExportAccum -> LIE GhcPs
                       -> RnM (Maybe (ExportAccum, (LIE GhcRn, Avails)))
     exports_from_item (ExportAccum occs earlier_mods)
-                      (dL->L loc ie@(IEModuleContents _ lmod@(dL->L _ mod)))
+                      (dL->L loc ie@(IEModuleContents _ lmod@(dL->L _ mod) lml1n))
+        -- XXX StructuredImports: duplicate export semantics here change, because of L1N exports -- revise later
         | mod `elementOfUniqSet` earlier_mods    -- Duplicate export of M
         = do { warnIfFlag Opt_WarnDuplicateExports True
                           (dupModuleExport mod) ;
@@ -247,6 +248,7 @@ exports_from_avail (Just (dL->L _ rdr_items)) rdr_env imports this_mod
         | otherwise
         = do { let { exportValid = (mod `elem` imported_modules)
                                 || (moduleName this_mod == mod)
+                                   -- XXX StructuredImports: extended validity?
                    ; gre_prs     = pickGREsModExp mod (globalRdrEnvElts rdr_env)
                    ; new_exports = map (availFromGRE . fst) gre_prs
                    ; all_gres    = foldr (\(gre1,gre2) gres -> gre1 : gre2 : gres) [] gre_prs
@@ -273,7 +275,7 @@ exports_from_avail (Just (dL->L _ rdr_items)) rdr_env imports this_mod
                              , ppr new_exports ])
 
              ; return (Just ( ExportAccum occs' mods
-                            , ( cL loc (IEModuleContents noExt lmod)
+                            , ( cL loc (IEModuleContents noExt lmod lml1n)
                               , new_exports))) }
 
     exports_from_item acc@(ExportAccum occs mods) (dL->L loc ie)

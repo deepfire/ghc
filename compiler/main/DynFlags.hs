@@ -4434,6 +4434,7 @@ xFlagsDeps = [
   flagSpec "StaticPointers"                   LangExt.StaticPointers,
   flagSpec "Strict"                           LangExt.Strict,
   flagSpec "StrictData"                       LangExt.StrictData,
+  flagSpec "StructuredImports"                LangExt.StructuredImports,
   flagSpec' "TemplateHaskell"                 LangExt.TemplateHaskell
                                               checkTemplateHaskellOk,
   flagSpec "TemplateHaskellQuotes"            LangExt.TemplateHaskellQuotes,

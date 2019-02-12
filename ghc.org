@@ -1,36 +1,3 @@
-* Types
-*** 
-*** GRE
-    - [[file:compiler/basicTypes/RdrName.hs::type%20GlobalRdrEnv%20=%20OccEnv%20%5BGlobalRdrElt%5D][type GlobalRdrEnv = OccEnv {GlobalRdrElt}]]
-    - [[file:compiler/basicTypes/OccName.hs::newtype%20OccEnv%20a%20=%20A%20(UniqFM%20a)][newtype OccEnv a = A (UniqFM a)]]
-    - [[file:compiler/utils/UniqFM.hs::newtype%20UniqFM%20ele%20=%20UFM%20(M.IntMap%20ele)][newtype UniqFM ele = UFM (M.IntMap ele)]]
-    - [[file:compiler/basicTypes/RdrName.hs::globalRdrEnvElts%20::%20GlobalRdrEnv%20->%20%5BGlobalRdrElt%5D][globalRdrEnvElts :: GlobalRdrEnv -> {GlobalRdrElt}]]
-*** IE
-    - [[file:compiler/hsSyn/HsImpExp.hs::type%20LIE%20pass%20=%20Located%20(IE%20pass)][type LIE pass = Located (IE pass)   compiler/hsSyn/HsImpExp.hs]]
-    - [[file:compiler/hsSyn/HsImpExp.hs::data%20IE%20pass][data IE pass   compiler/hsSyn/HsImpExp.hs]]
-      - [[file:compiler/parser/Parser.y::maybealiases%20::%20{%20Located%20(Maybe%20(Bool,%20Located%20%5BLIE%20GhcPs%5D))%20}][maybealiases :: { Located (Maybe (Bool, Located {LIE GhcPs})) }]]
-      - [[file:compiler/hsSyn/HsImpExp.hs::|%20IEModuleContents%20(XIEModuleContents%20pass)%20(Located%20ModuleName)%20(Maybe%20(Located%20ModuleName))][IEModuleContents (XIEModuleContents pass) (Located ModuleName) (Maybe (Located ModuleName))]]
-        - [[file:compiler/parser/Parser.y::|%20'module'%20modid%20maybeexpas%20{%25%20amsu%20(sLL%20$1%20$>%20(IEModuleContents%20noExt%20$2%20$3))][| 'module' modid maybeexpas {% amsu (sLL $1 $> (IEModuleContents noExt $2 $3))]]
-        - [[file:compiler/parser/Parser.y::modid%20::%20{%20Located%20ModuleName%20}][modid :: { Located ModuleName }]]
-        - [[file:compiler/hieFile/HieAst.hs::%5B%20toHie%20$%20IEC%20c%20n][{ toHie $ IEC c n]]
-*** ???
-    - [[file:compiler/typecheck/TcRnExports.hs::exports_from_avail%20(Just%20(dL->L%20_%20rdr_items))%20rdr_env%20imports%20this_mod][exports_from_avail (Just (dL->L _ rdr_items)) rdr_env imports this_mod]]
-*** ImportDecl
-    - [[file:compiler/main/HscTypes.hs::data%20ImportedModsVal][data ImportedModsVal   = ImportedModsVal]]
-    - [[file:compiler/basicTypes/RdrName.hs::data%20ImpDeclSpec][data ImpDeclSpec       = ImpDeclSpec]]
-    - [[file:compiler/hsSyn/HsImpExp.hs::data%20ImportDecl%20pass][data ImportDecl pass   = ImportDecl | XImportDecl]]
-*** ModIface
-    - [[file:compiler/main/HscTypes.hs::data%20ModGuts][data ModGuts]]
-    - [[file:compiler/main/HscTypes.hs::data%20ModDetails][data ModDetails]]
-    - [[file:compiler/main/HscTypes.hs::data%20ModIface][data ModIface]]
-      - [[file:compiler/main/HscTypes.hs::mi_exports%20::%20!%5BIfaceExport%5D,][mi_exports]]       :: ![[[file:compiler/main/HscTypes.hs::type%20IfaceExport%20=%20AvailInfo][IfaceExport]]] -- type IfaceExport = [[file:compiler/basicTypes/Avail.hs::data%20AvailInfo%20=%20Avail%20Name%20--%20^%20An%20ordinary%20identifier%20in%20scope][AvailInfo]]
-        data AvailInfo = Avail Name | AvailTC Name [Name] [FieldLabel]
-      - mi_decls         :: [(Fingerprint,[[file:compiler/iface/IfaceSyn.hs::data%20IfaceDecl][IfaceDecl]])]
-        = IfaceId | IfaceData | IfaceSynonym | IfaceFamily | IfaceClass | IfaceAxiom | IfacePatSyn
-      - mi_globals       :: Maybe [[file:compiler/basicTypes/RdrName.hs::type%20GlobalRdrEnv%20=%20OccEnv%20%5BGlobalRdrElt%5D][GlobalRdrEnv]]
-      - mi_deps          :: [[file:compiler/main/HscTypes.hs::data%20Dependencies][Dependencies]]
-      - mi_complete_sigs :: [[[file:compiler/iface/IfaceSyn.hs::data%20IfaceCompleteMatch%20=%20IfaceCompleteMatch%20%5BIfExtName%5D%20IfExtName][IfaceCompleteMatch]]]
-        data IfaceCompleteMatch = IfaceCompleteMatch [[[file:compiler/iface/IfaceType.hs::type%20IfExtName%20=%20Name%20--%20An%20External%20or%20WiredIn%20Name%20can%20appear%20in%20IfaceSyn][IfExtName]]] [[file:compiler/iface/IfaceType.hs::type%20IfExtName%20=%20Name%20--%20An%20External%20or%20WiredIn%20Name%20can%20appear%20in%20IfaceSyn][IfExtName]]
 * Notes
     - [[file:libraries/ghc-prim/GHC/Types.hs::{-%20Note%20%5BRuntime%20representation%20of%20modules%20and%20tycons%5D][Runtime representation of modules and tycons]]      ghc-prim/GHC/Types.hs
     - [[file:compiler/iface/MkIface.hs::Note%20%5BOriginal%20module%5D][Original module]]                                   iface/MkIface.hs
@@ -46,8 +13,10 @@
   - EPS :: External Package State
     - HPT :: * * Table
     - PIT :: * * Table
+  - BCO ::
   - GRE - Global Reader Environment :: OccName → [GlobalRdrElt]
   - home module ::
+  - OccName :: classified (type, value, etc) but not qualified and not yet resolved
   - Implicit TyThings ::
       DEFINITION: An "implicit" TyThing is one that does not have its own
       IfaceDecl in an interface file.  Instead, its binding in the type
@@ -55,107 +24,625 @@
       some other thing.
 
     Examples:
-      * All DataCons are implicit, because they are generated from the
-        IfaceDecl for the data/newtype.  Ditto class methods.
+    * All DataCons are implicit, because they are generated from the
+      IfaceDecl for the data/newtype.  Ditto class methods.
 
-      * Record selectors are *not* implicit, because they get their own
-        free-standing IfaceDecl.
+    * Record selectors are *not* implicit, because they get their own
+      free-standing IfaceDecl.
 
-      * Associated data/type families are implicit because they are
-        included in the IfaceDecl of the parent class.  (NB: the
-        IfaceClass decl happens to use IfaceDecl recursively for the
-        associated types, but that's irrelevant here.)
+    * Associated data/type families are implicit because they are
+      included in the IfaceDecl of the parent class.  (NB: the
+      IfaceClass decl happens to use IfaceDecl recursively for the
+      associated types, but that's irrelevant here.)
 
-      * Dictionary function Ids are not implicit.
+    * Dictionary function Ids are not implicit.
 
-      * Axioms for newtypes are implicit (same as above), but axioms
-        for data/type family instances are *not* implicit (like DFunIds).
-* Information flow
-  - interface -> String
-    - [[file:ghc/Main.hs::=%20ShowInterface%20FilePath%20--%20ghc%20--show-iface][ShowInterface FilePath -- ghc --show-iface]]
-      - [[file:ghc/Main.hs::doShowIface%20::%20DynFlags%20->%20FilePath%20->%20IO%20()][doShowIface :: DynFlags -> FilePath -> IO ()]]
-        - [[file:compiler/iface/LoadIface.hs::showIface%20::%20HscEnv%20->%20FilePath%20->%20IO%20()][showIface :: HscEnv -> FilePath -> IO ()]]
-          - readBinIface IgnoreHiWay TraceBinIFaceReading filename
-          - [[file:compiler/iface/LoadIface.hs::pprModIface%20::%20ModIface%20->%20SDoc][pprModIface :: ModIface -> SDoc]]
-  - source file → compiler → exports
-    - [[file:compiler/parser/Parser.y::exportlist%20::%20{%20OrdList%20(LIE%20GhcPs)%20}][exportlist :: { OrdList (LIE GhcPs) }]]
-      - [[file:compiler/parser/Parser.y::export%20::%20{%20OrdList%20(LIE%20GhcPs)%20}][export :: { OrdList (LIE GhcPs) }]]
-        - [[file:compiler/parser/RdrHsSyn.hs::mkModuleImpExp%20::%20Located%20ImpExpQcSpec%20->%20ImpExpSubSpec%20->%20P%20(IE%20GhcPs)][mkModuleImpExp :: Located ImpExpQcSpec -> ImpExpSubSpec -> P (IE GhcPs)]]
-        - [[file:compiler/hsSyn/HsImpExp.hs::|%20IEModuleContents%20(XIEModuleContents%20pass)%20(Located%20ModuleName)][IEModuleContents (XIEModuleContents pass) (Located ModuleName)]]
-  - source file → compiler → interface
-    - tcRnModule
-      - tcRnModuleTcRnM, tcRnImportDecls
-        - [[file:compiler/typecheck/TcRnDriver.hs::tcRnImports%20::%20HscEnv%20->%20%5BLImportDecl%20GhcPs%5D%20->%20TcM%20TcGblEnv][tcRnImports :: HscEnv -> {LImportDecl GhcPs} -> TcM TcGblEnv]]
-          - [[file:compiler/rename/RnNames.hs::rnImports%20::%20%5BLImportDecl%20GhcPs%5D][rnImports :: {LImportDecl GhcPs}]]
-            - [[file:compiler/rename/RnNames.hs::rnImportDecl%20::%20Module%20->%20LImportDecl%20GhcPs][rnImportDecl :: Module -> LImportDecl GhcPs]]
-              - maybe honor missingImportListWarn for level-1's
-              - iface <- [[file:compiler/iface/LoadIface.hs::loadSrcInterface_maybe%20::%20SDoc][loadSrcInterface]] want_boot (fmap sl_fs mb_pkg)
-                - [[file:compiler/iface/LoadIface.hs::loadInterface%20::%20SDoc%20->%20Module%20->%20WhereFrom][loadInterface :: SDoc -> Module -> WhereFrom]]
-                  - lookupIfaceByModule
-                  - [[file:compiler/iface/LoadIface.hs::computeInterface%20doc_str%20hi_boot_file%20mod0%20=%20do][compiler/iface/LoadIface.hs   computeInterface doc_str hi_boot_file mod0 = do]]
-                    - [[file:compiler/iface/LoadIface.hs::findAndReadIface%20doc_str%20mod%20wanted_mod_with_insts%20hi_boot_file][compiler/iface/LoadIface.hs   findAndReadIface doc_str mod wanted_mod_with_insts hi_boot_file]]
-                      - findExactModule
-                      - [[file:compiler/iface/LoadIface.hs::readIface%20::%20Module%20->%20FilePath][compiler/iface/LoadIface.hs   readIface :: Module -> FilePath]] [[file:compiler/iface/LoadIface.hs::readIface%20wanted_mod%20file_path][compiler/iface/LoadIface.hs   readIface wanted_mod file_path]]
-                        - [[file:compiler/iface/BinIface.hs::readBinIface%20checkHiWay%20traceBinIFaceReading%20hi_path%20=%20do][compiler/iface/BinIface.hs   readBinIface checkHiWay traceBinIFaceReading hi_path = do]]
-                          - [[file:compiler/iface/BinIface.hs::readBinIface_%20dflags%20checkHiWay%20traceBinIFaceReading%20hi_path%20ncu%20=%20do][compiler/iface/BinIface.hs   readBinIface_ dflags checkHiWay traceBinIFaceReading hi_path ncu = do]]
-                            - Binary.readBinMem
-                            - [[file:compiler/iface/BinIface.hs::getWithUserData%20::%20Binary%20a%20=>%20NameCacheUpdater%20->%20BinHandle%20->%20IO%20a][compiler/iface/BinIface.hs   getWithUserData :: Binary a => NameCacheUpdater -> BinHandle -> IO a]]
-                              -- | This performs a get action after reading the dictionary and symbol
-                              -- table. It is necessary to run this before trying to deserialise any
-                              -- Names or FastStrings.
-                              - [[file:compiler/utils/Binary.hs::getDictionary%20::%20BinHandle%20->%20IO%20Dictionary][compiler/utils/Binary.hs  getDictionary :: BinHandle -> IO Dictionary]]
-                              - [[file:compiler/iface/BinIface.hs::getSymbolTable%20::%20BinHandle%20->%20NameCacheUpdater%20->%20IO%20SymbolTable][compiler/iface/BinIface.hs   getSymbolTable :: BinHandle -> NameCacheUpdater -> IO SymbolTable]]
-                                - [[file:compiler/iface/BinIface.hs::fromOnDiskName%20::%20NameCache%20->%20OnDiskName%20->%20(NameCache,%20Name)][compiler/iface/BinIface.hs   fromOnDiskName :: NameCache -> OnDiskName -> (NameCache, Name)]]
-                                  - mkModule, takeUniqFromSupply, mkExternalName, extendNameCache
-                    - [[file:compiler/backpack/RnModIface.hs::rnModIface%20hsc_env%20insts%20nsubst%20iface%20=%20do][compiler/backpack/RnModIface.hs   rnModIface hsc_env insts nsubst iface = do]]
-                      - sig_of <- fmap Just (rnModule x) $ mi_sig_of iface
-                      - mod <- rnModule (mi_module iface)
-                      - exports <- mapM rnAvailInfo (mi_exports iface)
-                        - [[file:compiler/backpack/RnModIface.hs::rnAvailInfo%20::%20Rename%20AvailInfo][compiler/backpack/RnModIface.hs   rnAvailInfo :: Rename AvailInfo]]
-                          - [[file:compiler/backpack/RnModIface.hs::rnIfaceGlobal%20::%20Name%20->%20ShIfM%20Name][compiler/backpack/RnModIface.hs   rnIfaceGlobal :: Name -> ShIfM Name]]
-                          - [[file:compiler/backpack/RnModIface.hs::rnFieldLabel%20::%20Rename%20FieldLabel][compiler/backpack/RnModIface.hs   rnFieldLabel :: Rename FieldLabel]]
-                          - [[file:compiler/iface/IfaceEnv.hs::setNameModule%20::%20Maybe%20Module%20->%20Name%20->%20TcRnIf%20m%20n%20Name][compiler/iface/IfaceEnv.hs   setNameModule :: Maybe Module -> Name -> TcRnIf m n Name]]
-                      - decls <- mapM rnIfaceDecl' (mi_decls iface)
-                        - [[file:compiler/backpack/RnModIface.hs::rnIfaceDecl%20::%20Rename%20IfaceDecl][compiler/backpack/RnModIface.hs   rnIfaceDecl :: Rename IfaceDecl]]
-                      - insts <- mapM rnIfaceClsInst (mi_insts iface)
-                      - fams <- mapM rnIfaceFamInst (mi_fam_insts iface)
-                      - deps <- rnDependencies (mi_deps iface)
-                      - iface :: { mod, sig_of, insts, fams, exports, decls, deps }
-                  - mapM (loadDecl ignore_prags) <- mi_decls         iface
-                  - mapM tcIfaceInst             <- mi_insts         iface
-                  - mapM tcIfaceFamInst          <- mi_fam_insts     iface
-                  - tcIfaceRules ignore_prags    <- mi_rules         iface
-                  - tcIfaceAnnotations           <- mi_anns          iface
-                  - tcIfaceCompleteSigs          <- mi_complete_sigs iface
-                  - addDeclsToPTE, extendModule{Env,MatchMap}, extend{,Ann,Fam}InstEnvList, addEpsInStats
-                  - updateEps_
-              - [[file:compiler/rename/RnNames.hs::filterImports%20iface%20decl_spec%20(Just%20(want_hiding,%20L%20l%20import_items))][filterImports iface decl_spec (Just (want_hiding, L l import_items))]]
-                - --> want_hiding :: Bool, import_items :: Located [LIE GhcPs]
-                - <-- :: RnM (Maybe (Bool, Located [LIE GhcRn]), [GlobalRdrElt])
-                  - want_hiding
-                  - map fst items2 <- concat items1 <- mapM lookup_lie import_items
-                  - gres <- gresFromAvails <- pruned_avails <- filterAvails keep <- all_avails <- mi_exports iface
-                         <- concatMap gresFromIE items2
-              - imp_spec <- ImpDeclSpec
-              - (new_imp_decl, gres) <- (filterImports <- (iface, imp_details, imp_spec)
-              - potential_gres <- mkGlobalRdrEnv <- filterImports <- imp_spec
-              - <-- :: RnM (LImportDecl GhcRn, GlobalRdrEnv, ImportAvails, AnyHpcUsage)
-                - new_imp_decl
-                - gbl_env <- mkGlobalRdrEnv <- gres
-                - imports <- calculateAvails <- ImportedModsVal potential_gres
-                - mi_hpc <- iface <- loadSrcInterface
-  - interface -> compiler
-    - [[file:compiler/iface/BinIface.hs::writeBinIface%20::%20DynFlags%20->%20FilePath%20->%20ModIface%20->%20IO%20()][compiler/iface/BinIface.hs   writeBinIface :: DynFlags -> FilePath -> ModIface -> IO ()]]
-      - openBinMem
-      - [[file:compiler/iface/BinIface.hs::putWithUserData%20::%20Binary%20a%20=>%20(SDoc%20->%20IO%20())%20->%20BinHandle%20->%20a%20->%20IO%20()][compiler/iface/BinIface.hs   putWithUserData :: Binary a => (SDoc -> IO ()) -> BinHandle -> a -> IO ()]]
-        - bh <- return $ setUserData bh $ newWriteState $ (putName bin_dict bin_symtab)
-        - put_ bh payload
-        - symtab_p <- tellBin bh
-        - [[file:compiler/iface/BinIface.hs::putSymbolTable%20::%20BinHandle%20->%20Int%20->%20UniqFM%20(Int,Name)%20->%20IO%20()][compiler/iface/BinIface.hs   putSymbolTable :: BinHandle -> Int -> UniqFM (Int,Name) -> IO ()]] putSymbolTable bh symtab_next symtab_map
-          - [[file:compiler/iface/BinIface.hs::serialiseName%20::%20BinHandle%20->%20Name%20->%20UniqFM%20(Int,Name)%20->%20IO%20()][compiler/iface/BinIface.hs   serialiseName :: BinHandle -> Name -> UniqFM (Int,Name) -> IO ()]]
-            - put_ bh (moduleUnitId mod, moduleName mod, nameOccName name)
-        - [[file:compiler/utils/Binary.hs::putDictionary%20::%20BinHandle%20->%20Int%20->%20UniqFM%20(Int,FastString)%20->%20IO%20()][compiler/utils/Binary.hs   putDictionary :: BinHandle -> Int -> UniqFM (Int,FastString) -> IO ()]] bh dict_next dict_map
-      - writeBinMem
+    * Axioms for newtypes are implicit (same as above), but axioms
+      for data/type family instances are *not* implicit (like DFunIds).
+* ???
+  - [[file:compiler/hsSyn/HsExtension.hs::type%20GhcPs%20=%20GhcPass%20'Parsed%20--%20Old%20'RdrName'%20type%20param][type GhcPs = GhcPass 'Parsed]]
+* ImportDecl
+  - [[file:compiler/main/HscTypes.hs::data%20ImportedModsVal][data ImportedModsVal   = ImportedModsVal]]
+  - [[file:compiler/basicTypes/RdrName.hs::data%20ImpDeclSpec][data ImpDeclSpec       = ImpDeclSpec]]
+  - [[file:compiler/hsSyn/HsImpExp.hs::data%20ImportDecl%20pass][data ImportDecl pass   = ImportDecl | XImportDecl]]
+* ModIface
+  - [[file:compiler/main/HscTypes.hs::data%20ModGuts][data ModGuts]]
+  - [[file:compiler/main/HscTypes.hs::data%20ModDetails][data ModDetails]]
+  - [[file:compiler/main/HscTypes.hs::data%20ModIface][data ModIface]]
+    - [[file:compiler/main/HscTypes.hs::mi_exports%20::%20!%5BIfaceExport%5D,][mi_exports]]       :: ![[[file:compiler/main/HscTypes.hs::type%20IfaceExport%20=%20AvailInfo][IfaceExport]]] -- type IfaceExport = [[file:compiler/basicTypes/Avail.hs::data%20AvailInfo%20=%20Avail%20Name%20--%20^%20An%20ordinary%20identifier%20in%20scope][AvailInfo]]
+      data AvailInfo = Avail Name | AvailTC Name [Name] [FieldLabel]
+    - mi_decls         :: [(Fingerprint,[[file:compiler/iface/IfaceSyn.hs::data%20IfaceDecl][IfaceDecl]])]
+      = IfaceId | IfaceData | IfaceSynonym | IfaceFamily | IfaceClass | IfaceAxiom | IfacePatSyn
+    - mi_globals       :: Maybe [[file:compiler/basicTypes/RdrName.hs::type%20GlobalRdrEnv%20=%20OccEnv%20%5BGlobalRdrElt%5D][GlobalRdrEnv]]
+    - mi_deps          :: [[file:compiler/main/HscTypes.hs::data%20Dependencies][Dependencies]]
+    - mi_complete_sigs :: [[[file:compiler/iface/IfaceSyn.hs::data%20IfaceCompleteMatch%20=%20IfaceCompleteMatch%20%5BIfExtName%5D%20IfExtName][IfaceCompleteMatch]]]
+      data IfaceCompleteMatch = IfaceCompleteMatch [[[file:compiler/iface/IfaceType.hs::type%20IfExtName%20=%20Name%20--%20An%20External%20or%20WiredIn%20Name%20can%20appear%20in%20IfaceSyn][IfExtName]]] [[file:compiler/iface/IfaceType.hs::type%20IfExtName%20=%20Name%20--%20An%20External%20or%20WiredIn%20Name%20can%20appear%20in%20IfaceSyn][IfExtName]]
+* Names
+  - [[file:compiler/hsSyn/HsImpExp.hs::type%20LIE%20pass%20=%20Located%20(IE%20pass)][type LIE pass = Located (IE pass)   compiler/hsSyn/HsImpExp.hs]]
+  - [[file:compiler/hsSyn/HsImpExp.hs::data%20IE%20pass][data IE pass   compiler/hsSyn/HsImpExp.hs]]
+    - IEVar | IEThingAbs | IEThingAll | IEThingWith  | IEModuleContents | IEGroup | ...
+    - [[file:compiler/parser/Parser.y::maybealiases%20::%20{%20Located%20(Maybe%20(Bool,%20Located%20%5BLIE%20GhcPs%5D))%20}][importdecl/maybealiases :: { Located (Maybe (Bool, Located {LIE GhcPs})) }]]
+    - [[file:compiler/hsSyn/HsImpExp.hs::|%20IEModuleContents%20(XIEModuleContents%20pass)%20(Located%20ModuleName)%20(Maybe%20(Located%20ModuleName))][IEModuleContents (XIEModuleContents pass) (Located ModuleName) (Maybe (Located ModuleName))]]
+      - [[file:compiler/parser/Parser.y::|%20%20'module'%20modid%20][| 'module' modid maybeexpas {% amsu (sLL $1 $> (IEModuleContents noExt $2 $3))]]
+      - [[file:compiler/parser/Parser.y::modid%20::%20{%20Located%20ModuleName%20}][modid :: { Located ModuleName }]]
+      - [[file:compiler/hieFile/HieAst.hs::%5B%20toHie%20$%20IEC%20c%20n][{ toHie $ IEC c n]]
+  - [[file:compiler/hsSyn/HsExtension.hs::type%20family%20IdP%20p][type family IdP]] p
+    - type instance IdP GhcPs = RdrName
+    - type instance IdP GhcRn = Name
+    - type instance IdP GhcTc = Id
+  - [[file:compiler/basicTypes/RdrName.hs::data%20GlobalRdrElt][data GlobalRdrElt]] = GRE
+    - gre_name :: [[file:compiler/basicTypes/Name.hs::data%20Name%20=%20Name%20{][Name]]
+      - n_sort   :: NameSort,     -- What sort of name it is
+      - n_occ    :: !OccName,     -- Its occurrence name
+        - newtype OccName = OccName String::
+      - n_uniq   :: {-# UNPACK #-} !Unique,
+      - n_loc    :: !SrcSpan      -- Definition site
+    - gre_par  :: Parent
+      - NoParent
+      - ParentIs  par_is::[[file:compiler/basicTypes/Name.hs::data%20Name%20=%20Name%20{][Name]]
+      - FldParent par_is::[[file:compiler/basicTypes/Name.hs::data%20Name%20=%20Name%20{][Name]], par_lbl :: Maybe FieldLabelString
+    - gre_lcl  :: Bool          -- ^ True <=> the thing was defined locally
+    - gre_imp  :: [ImportSpec]  -- ^ In scope through these imports
+  - [[file:compiler/basicTypes/RdrName.hs::data%20RdrName][data RdrName]]
+    - Unqual OccName          -- ordinary, unqualified occurrences…
+    - Qual ModuleName OccName -- A qualified name written by the user in /source/ code
+                              -- Module is from which the name is imported.
+    - Orig Module OccName     -- From generated code (deriving). Module is the /defining/ module
+    - Exact Name              -- 1. [] (,), 2. TH
+  - [[file:compiler/basicTypes/Module.hs::newtype%20ModuleName%20=%20ModuleName%20FastString][newtype ModuleName]] = ModuleName FastString
+*** Environments
+    - [[file:compiler/basicTypes/RdrName.hs::data%20Parent%20=%20NoParent][data Parent]] = NoParent | ParentIs  par_is::Name | FldParent par_is::Name, par_lbl :: Maybe FieldLabelString
+    - [[file:compiler/typecheck/TcRnTypes.hs::data%20TcGblEnv][data TcGblEnv]]
+      - tcg_mod        :: Module
+        - [[file:libraries/ghc-prim/GHC/Types.hs::data%20Module%20=%20Module][data Module]] = Module TrName TrName -- -- Package&module names
+      - tcg_semantic_mod :: Module,    -- ^ If a signature, the backing module
+      - tcg_rdr_env    :: [[file:compiler/basicTypes/RdrName.hs::type%20GlobalRdrEnv%20=%20OccEnv%20%5BGlobalRdrElt%5D][GlobalRdrEnv]] = OccEnv [GlobalRdrElt]--'OccName' → [GRE]
+        - All the members of the list have distinct gre_name fields
+        - [[file:compiler/basicTypes/OccName.hs::newtype%20OccEnv%20a%20=%20A%20(UniqFM%20a)][newtype OccEnv a]] = A (UniqFM a)
+          - [[file:compiler/utils/UniqFM.hs::newtype%20UniqFM%20ele%20=%20UFM%20(M.IntMap%20ele)][newtype UniqFM ele]] = UFM (M.IntMap ele
+      - tcg_exports    :: [[[file:compiler/basicTypes/Avail.hs::data%20AvailInfo%20=%20Avail%20Name%20--%20^%20An%20ordinary%20identifier%20in%20scope][AvailInfo]]],     -- ^ What is exported
+        - data AvailInfo = Avail Name | AvailTC Name [Name] [FieldLabel]
+      - tcg_imports    :: [[file:compiler/typecheck/TcRnTypes.hs::data%20ImportAvails][ImportAvails]]
+        - imp_mods     :: ImportedMods -- ModuleEnv [ImportedModsVal],
+        - imp_dep_mods :: ModuleNameEnv (ModuleName, IsBootInterface),
+        - imp_dep_pkgs :: Set InstalledUnitId,
+        - imp_orphs    :: [Module],
+      - tcg_dus        :: DefUses,   -- ^ What is defined in this module and what is used.
+      - tcg_used_gres  :: TcRef [GlobalRdrElt],  -- ^ Records occurrences of imported entities
+      - tcg_rn_exports :: Maybe [(Located (IE GhcRn), [[[file:compiler/basicTypes/Avail.hs::data%20AvailInfo%20=%20Avail%20Name%20--%20^%20An%20ordinary%20identifier%20in%20scope][AvailInfo]]])],
+      - tcg_rn_imports :: [Located (ImportDecl GhcRn)]
+* Bird's eye view
+  - data [[file:compiler/main/HscTypes.hs::data%20ModSummary][ModSummary]]
+    - [[file:compiler/main/HscTypes.hs::ms_mod%20::%20Module,][ms_mod]]        ∷ [[file:libraries/ghc-prim/GHC/Types.hs::data%20Module%20=%20Module][Module]]
+    - [[file:compiler/main/HscTypes.hs::ms_parsed_mod%20::%20Maybe%20HsParsedModule,][ms_parsed_mod]] ∷ Maybe [[file:compiler/main/HscTypes.hs::data%20HsParsedModule%20=%20HsParsedModule%20{][HsParsedModule]]
+  - data [[file:compiler/main/HscTypes.hs::data%20HscEnv][HscEnv]]
+    - [[file:compiler/main/HscTypes.hs::hsc_mod_graph%20::%20ModuleGraph,][hsc_mod_graph]]    ∷ [[[file:compiler/main/HscTypes.hs::data%20ModuleGraph%20=%20ModuleGraph][ModuleGraph]]]
+    - [[file:compiler/main/HscTypes.hs::hsc_HPT%20::%20HomePackageTable,][hsc_HPT]]          ∷ [[file:compiler/main/HscTypes.hs::type%20HomePackageTable%20=%20DModuleNameEnv%20HomeModInfo][HomePackageTable]] -- already-compiled home-package modules
+    - [[file:compiler/main/HscTypes.hs::hsc_EPS%20::%20{-#%20UNPACK%20#-}%20!(IORef%20ExternalPackageState),][hsc_EPS]]          ∷ IORef [[file:compiler/main/HscTypes.hs::data%20ExternalPackageState][ExternalPackageState]]
+    - [[file:compiler/main/HscTypes.hs::hsc_NC%20::%20{-#%20UNPACK%20#-}%20!(IORef%20NameCache),][hsc_NC]]           ∷ IORef [[file:compiler/basicTypes/NameCache.hs::data%20NameCache][NameCache]]
+    - [[file:compiler/main/HscTypes.hs::hsc_FC%20::%20{-#%20UNPACK%20#-}%20!(IORef%20FinderCache),][hsc_FC]]           ∷ IORef [[file:compiler/main/HscTypes.hs::type%20FinderCache%20=%20InstalledModuleEnv%20InstalledFindResult][FinderCache]]
+    - [[file:compiler/main/HscTypes.hs::hsc_type_env_var%20::%20Maybe%20(Module,%20IORef%20TypeEnv)][hsc_type_env_var]] ∷ Maybe (Module, IORef [[file:compiler/main/HscTypes.hs::type%20TypeEnv%20=%20NameEnv%20TyThing][TypeEnv]]) -- TypeEnv = [[file:compiler/basicTypes/NameEnv.hs::type%20NameEnv%20a%20=%20UniqFM%20a%20--%20Domain%20is%20Name][NameEnv]] [[file:compiler/types/TyCoRep.hs::data%20TyThing][TyThing]]
+  - [[file:compiler/main/HscMain.hs::hscParse'%20mod_summary][hscParse']] ∷ [[file:compiler/main/HscTypes.hs::data%20HscEnv][HscEnv]] → [[file:compiler/main/HscTypes.hs::data%20ModSummary][ModSummary]] → [[file:compiler/main/HscTypes.hs::data%20HsParsedModule%20=%20HsParsedModule%20{][HsParsedModule]]
+    - [[file:compiler/main/HscTypes.hs::hpm_module%20::%20Located%20(HsModule%20GhcPs),][hpm_module]] :: Located ([[file:compiler/hsSyn/HsSyn.hs::data%20HsModule%20pass][HsModule]] GhcPs)
+      - [[file:compiler/hsSyn/HsSyn.hs::hsmodImports%20::%20%5BLImportDecl%20pass%5D,][hsmodImports]] :: [Located ([[file:compiler/hsSyn/HsImpExp.hs::data%20ImportDecl%20pass][ImportDecl]] pass)]
+        - [[file:compiler/hsSyn/HsImpExp.hs::ideclHiding%20::%20Maybe%20(Bool,%20Located%20%5BLIE%20pass%5D),][ideclHiding]]  :: Maybe (Bool, Located [Located ([[file:compiler/hsSyn/HsImpExp.hs::data%20IE%20pass][IE]] pass)])
+          - [[file:compiler/hsSyn/HsImpExp.hs::|%20IEModuleContents%20(XIEModuleContents%20pass)%20(Located%20ModuleName)%20(Maybe%20(Located%20ModuleName))][IEModuleContents]] (XIEModuleContents pass) (Located ModuleName)
+      - [[file:compiler/hsSyn/HsSyn.hs::hsmodDecls%20::%20%5BLHsDecl%20pass%5D,][hsmodDecls]] :: [Located ([[file:compiler/hsSyn/HsDecls.hs::data%20HsDecl%20p][HsDecl]] pass)]
+      - [[file:compiler/hsSyn/HsSyn.hs::hsmodExports%20::%20Maybe%20(Located%20%5BLIE%20pass%5D),][hsmodExports]] :: Maybe (Located [Located ([[file:compiler/hsSyn/HsImpExp.hs::data%20IE%20pass][IE]] pass)])
+        - [[file:compiler/hsSyn/HsImpExp.hs::|%20IEModuleContents%20(XIEModuleContents%20pass)%20(Located%20ModuleName)%20(Maybe%20(Located%20ModuleName))][IEModuleContents]] (XIEModuleContents pass) (Located ModuleName)
+  - import0 :: ModuleName in HsParsedModule.hpm_module.hsmodImports.ideclHiding.IEModuleContents
+  - export0 :: ModuleName in HsParsedModule.hpm_module.hsmodExports.IEModuleContents
+  - data [[file:compiler/typecheck/TcRnTypes.hs::data%20TcGblEnv][TcGblEnv]]
+    - [[file:compiler/typecheck/TcRnTypes.hs::tcg_mod%20::%20Module,%20--%20^%20Module%20being%20compiled][tcg_mod]]        ∷ Module
+    - [[file:compiler/typecheck/TcRnTypes.hs::tcg_rdr_env%20::%20GlobalRdrEnv,%20--%20^%20Top%20level%20envt;%20used%20during%20renaming][tcg_rdr_env]]    ∷ GlobalRdrEenv
+    - [[file:compiler/typecheck/TcRnTypes.hs::tcg_type_env%20::%20TypeEnv,][tcg_type_env]]   ∷ TypeEnv
+    - [[file:compiler/typecheck/TcRnTypes.hs::tcg_exports%20::%20%5BAvailInfo%5D,%20--%20^%20What%20is%20exported][tcg_exports]]    ∷ [[[file:compiler/basicTypes/Avail.hs::data%20AvailInfo%20=%20Avail%20Name%20--%20^%20An%20ordinary%20identifier%20in%20scope][AvailInfo]]]
+    - [[file:compiler/typecheck/TcRnTypes.hs::tcg_imports%20::%20ImportAvails,][tcg_imports]]    ∷ [[file:compiler/typecheck/TcRnTypes.hs::data%20ImportAvails][ImportAvails]]
+    - [[file:compiler/typecheck/TcRnTypes.hs::tcg_dus%20::%20DefUses,%20--%20^%20What%20is%20defined%20in%20this%20module%20and%20what%20is%20used.][tcg_dus]]        ∷ DefUses
+    - [[file:compiler/typecheck/TcRnTypes.hs::tcg_used_gres%20::%20TcRef%20%5BGlobalRdrElt%5D,%20--%20^%20Records%20occurrences%20of%20imported%20entities][tcg_used_gres]]  ∷ TcRef [GlobalRdrElt]
+    - [[file:compiler/typecheck/TcRnTypes.hs::tcg_rn_exports%20::%20Maybe%20%5B(Located%20(IE%20GhcRn),%20Avails)%5D,][tcg_rn_exports]] ∷ Maybe [(Located (IE GhcRn), [[[file:compiler/basicTypes/Avail.hs::data%20AvailInfo%20=%20Avail%20Name%20--%20^%20An%20ordinary%20identifier%20in%20scope][AvailInfo]]])]
+    - [[file:compiler/typecheck/TcRnTypes.hs::tcg_rn_imports%20::%20%5BLImportDecl%20GhcRn%5D,][tcg_rn_imports]] ∷ [Located ([[file:compiler/hsSyn/HsImpExp.hs::data%20ImportDecl%20pass][ImportDecl]] GhcRn)]
+    - [[file:compiler/typecheck/TcRnTypes.hs::tcg_rn_decls%20::%20Maybe%20(HsGroup%20GhcRn),][tcg_rn_decls]]   ∷ Maybe (HsGroup GhcRn)
+    - [[file:compiler/typecheck/TcRnTypes.hs::tcg_binds%20::%20LHsBinds%20GhcTc,%20--%20Value%20bindings%20in%20this%20module][tcg_binds]]      ∷ LHsBinds GhcTc
+  - data [[file:compiler/hsSyn/HsImpExp.hs::data%20IEWrappedName%20name][IEWrappedName]] name = [[file:compiler/hsSyn/HsImpExp.hs::=%20IEName%20(Located%20name)%20--%20^%20no%20extra][IEName]] name | [[file:compiler/hsSyn/HsImpExp.hs::|%20IEPattern%20(Located%20name)%20--%20^%20pattern%20X][IEPattern]] name | [[file:compiler/hsSyn/HsImpExp.hs::|%20IEType%20(Located%20name)%20--%20^%20type%20(:+:)][IEType]] name
+  - data [[file:compiler/hsSyn/HsImpExp.hs::data%20IE%20pass][IE]] pass
+    - [[file:compiler/hsSyn/HsImpExp.hs::=%20IEVar%20(XIEVar%20pass)%20(LIEWrappedName%20(IdP%20pass))][IEVar]] (Located ([[file:compiler/hsSyn/HsImpExp.hs::data%20IEWrappedName%20name][IEWrappedName]] ([[file:compiler/hsSyn/HsExtension.hs::type%20family%20IdP%20p][IdP]] pass)))
+    - [[file:compiler/hsSyn/HsImpExp.hs::|%20IEModuleContents%20(XIEModuleContents%20pass)%20(Located%20ModuleName)%20(Maybe%20(Located%20ModuleName))][IEModuleContents]] (Located ModuleName)
+  - [[file:compiler/main/HscMain.hs::tcRnModule'%20sum%20save_rn_syntax%20mod%20=%20do][tcRnModule']] → [[file:compiler/typecheck/TcRnDriver.hs::tcRnModule%20hsc_env%20mod_sum%20save_rn_syntax][tcRnModule]] ∷ [[file:compiler/main/HscTypes.hs::data%20HscEnv][HscEnv]] → [[file:compiler/main/HscTypes.hs::data%20ModSummary][ModSummary]] → [[file:compiler/main/HscTypes.hs::data%20HsParsedModule%20=%20HsParsedModule%20{][HsParsedModule]] → IO [[file:compiler/typecheck/TcRnTypes.hs::data%20TcGblEnv][TcGblEnv]]
+    - [[file:compiler/typecheck/TcRnDriver.hs::tcRnImports%20::%20HscEnv%20->%20%5BLImportDecl%20GhcPs%5D%20->%20TcM%20TcGblEnv][tcRnImports]]  ∷ [[file:compiler/main/HscTypes.hs::data%20HscEnv][HscEnv]] → [Located ([[file:compiler/hsSyn/HsImpExp.hs::data%20ImportDecl%20pass][ImportDecl]] GhcPs)] → TcM [[file:compiler/typecheck/TcRnTypes.hs::data%20TcGblEnv][TcGblEnv]]
+      - see *import0*
+      - [[file:compiler/rename/RnNames.hs::rnImportDecl%20::%20Module%20->%20LImportDecl%20GhcPs][rnImportDecl]] ∷ Module → Located ([[file:compiler/hsSyn/HsImpExp.hs::data%20ImportDecl%20pass][ImportDecl]] GhcPs)
+                     → RnM (Located ([[file:compiler/hsSyn/HsImpExp.hs::data%20ImportDecl%20pass][ImportDecl]] GhcRn), [[file:compiler/basicTypes/RdrName.hs::type%20GlobalRdrEnv%20=%20OccEnv%20%5BGlobalRdrElt%5D][GlobalRdrEnv]], [[file:compiler/typecheck/TcRnTypes.hs::data%20ImportAvails][ImportAvails]])
+        - [[file:compiler/iface/LoadIface.hs::loadSrcInterface%20::%20SDoc][loadSrcInterface]] ∷ ModuleName → RnM [[file:compiler/main/HscTypes.hs::data%20ModIface][ModIface]]
+    - [[file:compiler/typecheck/TcRnDriver.hs::tcRnSrcDecls%20::%20Bool%20--%20False%20=>%20no%20'module%20M(..)%20where'%20header%20at%20all][tcRnSrcDecls]] ∷ Bool → [Located ([[file:compiler/hsSyn/HsDecls.hs::data%20HsDecl%20p][HsDecl]] GhcPs)] → TcM [[file:compiler/typecheck/TcRnTypes.hs::data%20TcGblEnv][TcGblEnv]]
+    - [[file:compiler/typecheck/TcRnExports.hs::tcRnExports%20::%20Bool%20--%20False%20=>%20no%20'module%20M(..)%20where'%20header%20at%20all][tcRnExports]]  ∷ [Located [[file:compiler/hsSyn/HsImpExp.hs::data%20IE%20pass][IE]]] → [[file:compiler/typecheck/TcRnTypes.hs::data%20TcGblEnv][TcGblEnv]] → [[file:compiler/typecheck/TcRnTypes.hs::data%20TcGblEnv][TcGblEnv]]
+      - see *export0*
+  - import1 :: IEModuleContents → ModIface → ???
+  - export1 :: IEModuleContents → ??? → ???
+  - [[file:compiler/main/HscMain.hs::finish%20summary%20tc_result%20mb_old_hash%20=%20do][finish]] ∷ [[file:compiler/main/HscTypes.hs::data%20ModSummary][ModSummary]] → [[file:compiler/typecheck/TcRnTypes.hs::data%20TcGblEnv][TcGblEnv]] → Hsc (HscStatus, [[file:compiler/main/HscTypes.hs::data%20HomeModInfo][HomeModInfo]])
+    - [[file:compiler/main/HscMain.hs::hscDesugar'%20mod_location%20tc_result%20=%20do][hscDesugar']]  ∷ ModLocation → [[file:compiler/typecheck/TcRnTypes.hs::data%20TcGblEnv][TcGblEnv]] → Hsc [[file:compiler/main/HscTypes.hs::data%20ModGuts][ModGuts]]
+    - [[file:compiler/main/HscMain.hs::hscSimplify'%20plugins%20ds_result%20=%20do][hscSimplify']] ∷ [String] → [[file:compiler/main/HscTypes.hs::data%20ModGuts][ModGuts]] → Hsc [[file:compiler/main/HscTypes.hs::data%20ModGuts][ModGuts]]
+    - [[file:compiler/main/HscMain.hs::hscNormalIface%20hsc_env%20simpl_result%20mb_old_iface%20=][hscNormalIface]] → [[file:compiler/main/HscMain.hs::hscNormalIface'%20simpl_result%20mb_old_iface%20=%20do][hscNormalIface']] ∷ [[file:compiler/main/HscTypes.hs::data%20HscEnv][HscEnv]] → [[file:compiler/main/HscTypes.hs::data%20ModGuts][ModGuts]]
+                                       → IO ([[file:compiler/main/HscTypes.hs::data%20ModIface][ModIface]], Bool, [[file:compiler/main/HscTypes.hs::data%20ModDetails][ModDetails]], CgGuts)
+      : compute a ModIface
+      - [[file:compiler/main/TidyPgm.hs::tidyProgram%20hsc_env%20(ModGuts%20{%20mg_module%20=%20mod][tidyProgram]]
+      - [[file:compiler/iface/MkIface.hs::mkIface%20hsc_env%20maybe_old_fingerprint%20mod_details][mkIface]] ∷ [[file:compiler/main/HscTypes.hs::data%20HscEnv][HscEnv]] → [[file:compiler/main/HscTypes.hs::data%20ModDetails][ModDetails]] → [[file:compiler/main/HscTypes.hs::data%20ModGuts][ModGuts]] → IO [[file:compiler/main/HscTypes.hs::data%20ModIface][ModIface]]
+    - [[file:compiler/main/HscMain.hs::hscMaybeWriteIface%20::%20DynFlags%20->%20ModIface%20->%20Bool%20->%20ModSummary%20->%20IO%20()][hscMaybeWriteIface]] → [[file:compiler/main/HscMain.hs::hscWriteIface%20::%20DynFlags%20->%20ModIface%20->%20Bool%20->%20ModSummary%20->%20IO%20()][hscWriteIface]] (iface, dynIface) → [[file:compiler/iface/MkIface.hs::writeIfaceFile%20::%20DynFlags%20->%20FilePath%20->%20ModIface%20->%20IO%20()][writeIfaceFile]] → [[file:compiler/iface/BinIface.hs::writeBinIface%20::%20DynFlags%20->%20FilePath%20->%20ModIface%20->%20IO%20()][writeBinIface]]
+  - export2 :: ??? → ModIface
+* Large Picture
+  - [[file:compiler/main/GhcMake.hs::upsweep%20mHscMessage%20old_hpt%20stable_mods%20cleanup%20sccs%20=%20do][upsweep]] → [[file:compiler/main/GhcMake.hs::upsweep'%20old_hpt%20done][upsweep']]
+    : "compile each module in the module graph"
+    - [[file:compiler/typecheck/TcBackpack.hs::tcRnCheckUnitId%20hsc_env%20uid%20=][tcRnCheckUnitId]], [[file:compiler/main/GhcMake.hs::reTypecheckLoop%20::%20HscEnv%20->%20ModSummary%20->%20ModuleGraph%20->%20IO%20HscEnv][reTypecheckLoop]], [[file:compiler/main/GhcMake.hs::upsweep_mod%20::%20HscEnv][upsweep_mod]], [[file:compiler/main/GhcMake.hs::reTypecheckLoop%20::%20HscEnv%20->%20ModSummary%20->%20ModuleGraph%20->%20IO%20HscEnv][reType…Loop]], [[file:compiler/main/HscMain.hs::hscAddSptEntries%20::%20HscEnv%20->%20%5BSptEntry%5D%20->%20IO%20()][hscAddSptEntries]], [[file:compiler/main/GhcMake.hs::upsweep'%20old_hpt%20done][upsweep']]
+  - [[file:compiler/main/GhcMake.hs::upsweep_mod%20::%20HscEnv][upsweep_mod]] ∷ … → IO HomeModInfo
+    : "Compile a single module.  Always produce a Linkable for it"
+    - [[file:compiler/main/HscTypes.hs::data%20HomeModInfo][data HomeModInfo]]
+      - hm_iface    :: ModIface       -- basic loaded interface file: every loaded module has one
+      - hm_details  :: ModDetails     -- Extra info that was created from the 'ModIface'
+      - hm_linkable :: Maybe Linkable -- artifact we would like to link to access things in this module
+    - [[file:compiler/main/DriverPipeline.hs::compileOne'%20m_tc_result%20mHscMessage][compileOne']] ∷ … → IO HomeModInfo
+      - [[file:compiler/main/HscMain.hs::hscIncrementalCompile%20always_do_basic_recompilation_check%20m_tc_result][hscIncrementalCompile]] ∷ Maybe [[file:compiler/typecheck/TcRnTypes.hs::data%20TcGblEnv][TcGblEnv]] → HscEnv → [[file:compiler/main/HscTypes.hs::data%20ModSummary][ModSummary]]
+                              → Maybe ModIface -- old interface, if we have one
+                              → (HscStatus, HomeModInfo)
+        - [[file:compiler/main/HscMain.hs::hscIncrementalFrontend][hscIncrementalFrontend]] ∷ … → Hsc (Either ModIface (FrontendResult, Maybe Fingerprint))
+          : "runs GHC's frontend with recompilation avoidance"
+          : Left for old_iface, Right for new, recompiled stuff
+          - [[file:compiler/typecheck/TcRnTypes.hs::data%20FrontendResult][data FrontendResult]] = FrontendTypecheck TcGblEnv -- GHC-ODDITY
+          - [[file:compiler/iface/MkIface.hs::checkOldIface%20hsc_env%20mod_summary%20source_modified%20maybe_iface][checkOldIface]] ∷ … → IO (RecompileRequired, Maybe ModIface)
+          - [[file:compiler/main/HscMain.hs::genericHscFrontend%20::%20ModSummary%20->%20Hsc%20FrontendResult][genericHscFrontend]] ∷ [[file:compiler/main/HscTypes.hs::data%20ModSummary][ModSummary]] → Hsc FrontendResult
+            : thin shim around hsc_typecheck
+            - [[file:compiler/main/HscMain.hs::hscFileFrontEnd%20::%20ModSummary%20->%20Hsc%20TcGblEnv][hscFileFrontEnd]] → … → [[file:compiler/main/HscMain.hs::hsc_typecheck%20keep_rn%20mod_summary%20mb_rdr_module%20=%20do][hsc_typecheck]] ∷ [[file:compiler/main/HscTypes.hs::data%20ModSummary][ModSummary]] → HscTcGblEnv
+              - [[file:compiler/main/HscMain.hs::hscParse'%20mod_summary][hscParse']] ∷ HscEnv → [[file:compiler/main/HscTypes.hs::data%20ModSummary][ModSummary]]ModSummary → IO [[file:compiler/main/HscTypes.hs::data%20HsParsedModule%20=%20HsParsedModule%20{][HsParsedModule]]
+                - [[file:compiler/parser/Parser.y::%25name%20parseModule%20module][%name parseModule module]]
+                  - [[file:compiler/parser/Parser.y::exportlist%20::%20{%20OrdList%20(LIE%20GhcPs)%20}][exportlist :: { OrdList (LIE GhcPs) }]]
+                    - [[file:compiler/parser/Parser.y::export%20::%20{%20OrdList%20(LIE%20GhcPs)%20}][export :: { OrdList (LIE GhcPs) }]]
+                      - regular exports: [[file:compiler/parser/RdrHsSyn.hs::mkModuleImpExp%20::%20Located%20ImpExpQcSpec%20->%20ImpExpSubSpec%20->%20P%20(IE%20GhcPs)][mkModuleImpExp :: Located ImpExpQcSpec -> ImpExpSubSpec -> P (IE GhcPs)]]
+                      - module exports :: [[file:compiler/hsSyn/HsImpExp.hs::|%20IEModuleContents%20(XIEModuleContents%20pass)%20(Located%20ModuleName)][IEModuleContents (XIEModuleContents pass) (Located ModuleName)]]
+                      - [[file:compiler/hsSyn/HsImpExp.hs::|%20IEModuleContents%20(XIEModuleContents%20pass)%20(Located%20ModuleName)][IEModuleContents (XIEModuleContents pass) (Located ModuleName)]]
+                      - [[file:compiler/hsSyn/HsImpExp.hs::type%20LImportDecl%20pass%20=%20Located%20(ImportDecl%20pass)][type LImportDecl pass = Located (ImportDecl pass)]]
+                  - [[file:compiler/hsSyn/HsSyn.hs::data%20HsModule%20pass][data HsModule]] pass
+                    - hsmodName    :: Maybe (Located ModuleName) -- If omitted in source
+                    - hsmodExports :: Maybe (Located [LIE pass]) -- Nothing ≡ export all, Just [] ≡ nothing
+                    - hsmodImports :: [Located ([[file:compiler/hsSyn/HsImpExp.hs::data%20ImportDecl%20pass][ImportDecl]] pass)] -- often empty, downstream (?)
+                    - hsmodDecls   :: [LHsDecl pass] -- Type, class, value, and interface signature decls
+                  - [[file:compiler/main/HscTypes.hs::data%20HsParsedModule%20=%20HsParsedModule%20{][data HsParsedModule]]
+                    - hpm_module      :: Located ([[file:compiler/hsSyn/HsSyn.hs::data%20HsModule%20pass][HsModule]] GhcPs)
+                    - hpm_src_files   :: [FilePath] -- extra source files (e.g. from #includes)
+                    - hpm_annotations :: ApiAnns -- See note [Api annotations]
+              - [[file:compiler/main/HscMain.hs::tcRnModule'%20sum%20save_rn_syntax%20mod%20=%20do][tcRnModule']]→[[file:compiler/typecheck/TcRnDriver.hs::tcRnModule%20hsc_env%20mod_sum%20save_rn_syntax][tcRnModule]] ∷ HscEnv → ModSummary → HsParsedModule → IO TcGblEnv
+                - [[file:compiler/typecheck/TcRnDriver.hs::tcRnModuleTcRnM%20::%20HscEnv][tcRnModuleTcRnM]] ∷ HscEnv → ModSummary → HsParsedModule → TcRn TcGblEnv
+                  - tcHiBootIface
+                  - findExtraSigImports
+                  - implicitRequirements
+                  - [[file:compiler/typecheck/TcRnDriver.hs::tcRnImports%20::%20HscEnv%20->%20%5BLImportDecl%20GhcPs%5D%20->%20TcM%20TcGblEnv][tcRnImports]] ∷ HscEnv → [LImportDecl GhcPs] → TcM TcGblEnv
+                    - [[file:compiler/rename/RnNames.hs::rnImports%20::%20%5BLImportDecl%20GhcPs%5D][rnImports]] ∷ [LImportDecl GhcPs]
+                                → RnM ([LImportDecl GhcRn], GlobalRdrEnv, [[file:compiler/typecheck/TcRnTypes.hs::data%20ImportAvails][ImportAvails]])
+                      - [[file:compiler/rename/RnNames.hs::rnImportDecl%20::%20Module%20->%20LImportDecl%20GhcPs][rnImportDecl]] ∷ Module → LImportDecl GhcPs
+                                     → RnM (LImportDecl GhcRn, GlobalRdrEnv, [[file:compiler/typecheck/TcRnTypes.hs::data%20ImportAvails][ImportAvails]])
+                        - [[file:compiler/rename/RnNames.hs::iface%20<-%20loadSrcInterface%20doc%20imp_mod_name%20want_boot%20(fmap%20sl_fs%20mb_pkg)][iface]] ← [[file:compiler/iface/LoadIface.hs::loadSrcInterface%20::%20SDoc][loadSrcInterface]] imp_mod_name
+                        - imp_spec = ImpDeclSpec {…}
+                        - [[file:compiler/rename/RnNames.hs::,%20gres)%20<-%20filterImports%20iface%20imp_spec%20imp_details%20imp_details_als][new_imp_details, gres]] ← [[file:compiler/rename/RnNames.hs::filterImports%20iface%20decl_spec%20(Just%20(want_hiding,%20L%20l%20import_items))%20(_)][filterImports]] iface imp_spec imp_details
+                          - items2 <- concat <$> mapM [[file:compiler/rename/RnNames.hs::lookup_lie%20::%20LIE%20GhcPs%20->%20TcRn%20%5B(LIE%20GhcRn,%20AvailInfo)%5D][lookup_lie]] import_items
+                          - [[file:compiler/rename/RnNames.hs::names%20=%20availsToNameSetWithSelectors%20(map%20snd%20items2)][names]] = [[file:compiler/basicTypes/Avail.hs::availsToNameSetWithSelectors%20::%20%5BAvailInfo%5D%20->%20NameSet][availsToNameSetWithSelectors]] (map snd items2)
+                          - pruned_avails = [[file:compiler/basicTypes/Avail.hs::filterAvails%20::%20(Name%20->%20Bool)%20->%20%5BAvailInfo%5D%20->%20%5BAvailInfo%5D][filterAvails]] keep (mi_exports iface)
+                          - [[file:compiler/rename/RnNames.hs::gres%20|%20want_hiding%20=%20gresFromAvails%20(Just%20hiding_spec)%20pruned_avails][gres]] | want_hiding = [[file:compiler/basicTypes/RdrName.hs::gresFromAvails%20::%20Maybe%20ImportSpec%20->%20%5BAvailInfo%5D%20->%20%5BGlobalRdrElt%5D][gresFromAvails]] (Just hiding_spec) pruned_avails
+                                 | otherwise   = concatMap ([[file:compiler/rename/RnNames.hs::gresFromIE%20::%20ImpDeclSpec%20->%20(LIE%20GhcRn,%20AvailInfo)%20->%20%5BGlobalRdrElt%5D][gresFromIE]] decl_spec) items2
+                          - return ((Just (want_hiding, L l (map fst items2))
+                                    ,Nothing)
+                                   , gres)
+                        - gbl_env = mkGlobalRdrEnv gres
+                        - [[file:compiler/rename/RnNames.hs::let%20imv%20=%20ImportedModsVal][imv]]     = ImportedModsVal potential_gres
+                        - [[file:compiler/rename/RnNames.hs::imports%20=%20calculateAvails%20dflags%20iface%20mod_safe'%20want_boot%20(ImportedByUser%20imv)][imports]] = [[file:compiler/rename/RnNames.hs::calculateAvails%20dflags%20iface%20mod_safe'%20want_boot%20imported_by%20=][calculateAvails]] iface imv
+                          : 'ImportAvails' due to import of a particular interface,
+                          : but without 'imp_mods'.
+                          - [[file:compiler/rename/RnNames.hs::in%20ImportAvails%20{][ImportAvails]]
+                            - imp_mods  = unitModuleEnv (mi_module iface) [imported_by]
+                            - imp_orphs = orphans
+                        - [[file:compiler/typecheck/TcRnTypes.hs::data%20ImportAvails][data ImportAvails]]
+                          - imp_mods     :: ImportedMods -- ModuleEnv [ImportedModsVal],
+                          - imp_dep_mods :: ModuleNameEnv (ModuleName, IsBootInterface),
+                          - imp_dep_pkgs :: Set InstalledUnitId,
+                          - imp_orphs    :: [Module],
+                        - return ([[file:compiler/rename/RnNames.hs::let%20new_imp_decl%20=%20L%20loc%20(decl%20{%20ideclExt%20=%20noExt,%20ideclSafe%20=%20mod_safe'][new_imp_decl]], gbl_env, imports)
+                    - [[file:compiler/typecheck/TcRnDriver.hs::;%20updGblEnv%20(%20\%20gbl%20->][updGblEnv ( \ gbl ->]] -- basically, results from rnImports
+                      - tcg_rdr_env    += rdr_env
+                      - tcg_import     += imports
+                      - tcg_rn_imports += rn_imports
+                  - [[file:compiler/typecheck/TcRnDriver.hs::;%20setGblEnv%20tcg_env1][setGblEnv tcg_env1]]
+                    - [[file:compiler/typecheck/TcRnDriver.hs::tcRnSrcDecls%20::%20Bool%20--%20False%20=>%20no%20'module%20M(..)%20where'%20header%20at%20all][tcRnSrcDecls]] ∷ Bool → [LHsDecl GhcPs] → TcM TcGblEnv
+                      - [[file:compiler/typecheck/TcRnDriver.hs::tc_rn_src_decls%20::%20%5BLHsDecl%20GhcPs%5D][tc_rn_src_decls]] ∷ [LHsDecl GhcPs] → TcM (TcGblEnv, TcLclEnv, WantedConstraints)
+                        - [[file:compiler/typecheck/TcRnDriver.hs::;%20(tcg_env,%20rn_decls)%20<-%20rnTopSrcDecls%20first_group][(tcg_env, rn_decls)]] ← [[file:compiler/typecheck/TcRnDriver.hs::rnTopSrcDecls%20::%20HsGroup%20GhcPs%20->%20TcM%20(TcGblEnv,%20HsGroup%20GhcRn)][rnTopSrcDecls]]
+                          - [[file:compiler/rename/RnSource.hs::rnSrcDecls%20group@(HsGroup%20{%20hs_valds%20=%20val_decls,][rnSrcDecls]]
+                            : dependency analysis and precedence parsing + error checks
+                            - [[file:compiler/rename/RnNames.hs::getLocalNonValBinders%20fixity_env][getLocalNonValBinders]] ∷ HsGroup GhcPs → RnM ((TcGblEnv, TcLclEnv), NameSet)
+                              : Get all the top-level binders bound the group *except*
+                              : for value bindings, which are treated separately
+                              : Specifically we return AvailInfo for: type&class decls, assoc types, foreign imports, value sigs (boot-only)
+                            - [[file:compiler/rename/RnBinds.hs::rnTopBindsLHS%20::%20MiniFixityEnv][rnTopBindsLHS]] → [[file:compiler/rename/RnBinds.hs::rnValBindsLHS%20topP%20(ValBinds%20x%20mbinds%20sigs)][rnValBindsLHS]] → [[file:compiler/rename/RnBinds.hs::rnBindLHS%20name_maker%20_%20bind@(FunBind%20{%20fun_id%20=%20rdr_name%20})][rnBindLHS]]
+                              : for top-level bindings, we need to make top-level names,
+                              : so we have a different entry point than for local bindings
+                              - [[file:compiler/rename/RnBinds.hs::=%20do%20{%20name%20<-%20applyNameMaker%20name_maker%20rdr_name][name]] ← [[file:compiler/rename/RnPat.hs::applyNameMaker%20::%20NameMaker%20->%20Located%20RdrName%20->%20RnM%20(Located%20Name)][applyNameMaker]] name_maker rdr_name
+                              - return bind { fun_id = name, fun_ext = noExt }
+                            - [[file:compiler/hsSyn/HsUtils.hs::collectHsIdBinders%20=%20collect_hs_val_binders%20True][collectHsIdBinders]] → [[file:compiler/hsSyn/HsUtils.hs::collect_hs_val_binders%20::%20Bool%20->%20HsValBindsLR%20(GhcPass%20idL)%20(GhcPass%20idR)][collect_hs_val_binders]] →
+                              [[file:compiler/hsSyn/HsUtils.hs::collect_binds%20::%20Bool%20->%20LHsBindsLR%20(GhcPass%20p)%20idR%20->][collect_binds]] ∷ Bool → LHsBindsLR idR → [IdP] → [IdP]
+                              - [[file:compiler/hsSyn/HsUtils.hs::collect_bind%20::%20(SrcSpanLess%20(LPat%20p)%20~%20Pat%20p%20,%20HasSrcSpan%20(LPat%20p))%20=>][collect_bind]] ∷ Bool -> HsBindLR p idR -> [IdP p] -> [IdP p]
+                            - tc_envs ← extendGlobalRdrEnvRn
+                            - (rn_tycl_decls, src_fvs1) ← [[file:compiler/rename/RnSource.hs::rnTyClDecls%20::%20%5BTyClGroup%20GhcPs%5D][rnTyClDecls]] tycl_decls
+                            - [[file:compiler/rename/RnSource.hs::(rn_val_decls,%20bind_dus)%20<-%20if%20is_boot][(rn_val_decls, bind_dus)]] ← [[file:compiler/rename/RnBinds.hs::rnValBindsRHS%20ctxt%20(ValBinds%20_%20mbinds%20sigs)][rnValBindsRHS]], rnTopBindsBoot
+                              ∷ [[file:compiler/rename/RnEnv.hs::data%20HsSigCtxt][HsSigCtxt]] → [[file:compiler/hsSyn/HsBinds.hs::data%20HsValBindsLR%20idL%20idR][HsValBindsLR]] [[file:compiler/hsSyn/HsExtension.hs::type%20GhcRn%20=%20GhcPass%20'Renamed%20--%20Old%20'Name'%20type%20param][GhcRn]] [[file:compiler/hsSyn/HsExtension.hs::type%20GhcPs%20=%20GhcPass%20'Parsed%20--%20Old%20'RdrName'%20type%20param][GhcPs]]
+                              → RnM ([[file:compiler/hsSyn/HsBinds.hs::type%20HsValBinds%20id%20=%20HsValBindsLR%20id%20id][HsValBinds]] GhcRn, [[[file:compiler/basicTypes/NameSet.hs::type%20DefUse%20=%20(Maybe%20Defs,%20Uses)][DefUse]]])
+                              : General version used both from the top-level and for local things
+                              : Assumes the LHS vars are in scope
+                              - see body at :: [[*Renamer: value binding RHS]]
+                              - return XValBindsLR (NValBinds anal_binds sigs'), valbind'_dus
+                            - final_tcg_env = last_tcg_env `addTcgDUs` src_dus
+                            - rn_group = HsGroup {
+                              - hs_valds = rn_val_decls
+                            - return (final_tcg_env, rn_group)
+                          - tcg_rn_decls
+                        - tcg_th_topdecls
+                        - [[file:compiler/typecheck/TcRnDriver.hs::;%20((tcg_env,%20tcl_env),%20lie1)%20<-%20setGblEnv%20tcg_env%20$][((tcg_env1, tcl_env), lie1)]] ← setGblEnv tcg_env
+                                                      $ captureTopConstraints
+                                                      $ [[file:compiler/typecheck/TcRnDriver.hs::tcTopSrcDecls%20::%20HsGroup%20GhcRn%20->%20TcM%20(TcGblEnv,%20TcLclEnv)][tcTopSrcDecls]] rn_decls
+                          - tcTyClsInstDecls
+                          - [[file:compiler/typecheck/TcRnDriver.hs::(fi_ids,%20fi_decls,%20fi_gres)%20<-%20tcForeignImports%20foreign_decls%20;][(fi_ids, fi_decls, fi_gres)]] ← [[file:compiler/typecheck/TcForeign.hs::tcForeignImports%20::%20%5BLForeignDecl%20GhcRn%5D][tcForeignImports]] foreign_decls, tcDefaults
+                          - [[file:compiler/typecheck/TcBinds.hs::tcTopBinds%20binds%20sigs][tcTopBinds]] ∷ [(RecFlag, LHsBinds GhcRn)] → [LSig GhcRn] → TcM (TcGblEnv, TcLclEnv)
+                            - [[file:compiler/typecheck/TcBinds.hs::(binds',%20(tcg_env,%20tcl_env))%20<-%20tcValBinds%20TopLevel%20binds%20sigs%20$][(binds', (tcg_env, tcl_env))]] ← [[file:compiler/typecheck/TcBinds.hs::tcValBinds%20top_lvl%20binds%20sigs%20thing_inside][tcValBinds]] TopLevel binds sigs thing_inside
+                              - [[file:compiler/typecheck/TcBinds.hs::;%20(poly_ids,%20sig_fn)%20<-%20tcAddPatSynPlaceholders%20patsyns%20$][(poly_ids, sig_fn)]] ← tcTySigs sigs
+                              - [[file:compiler/typecheck/TcBinds.hs::{%20(binds',%20(extra_binds',%20thing))%20<-%20tcBindGroups%20top_lvl%20sig_fn%20prag_fn%20binds%20$%20do][(binds', (extra_binds', thing))]] ← [[file:compiler/typecheck/TcBinds.hs::tcBindGroups%20top_lvl%20sig_fn%20prag_fn%20(group%20:%20groups)%20thing_inside][tcBindGroups]] top_lvl sig_fn prag_fn binds $ do
+                                - [[file:compiler/typecheck/TcBinds.hs::tc_group%20top_lvl%20sig_fn%20prag_fn%20(NonRecursive,%20binds)%20closed%20thing_inside][tc_group]] ∷ … → TcM ([(RecFlag, LHsBinds GhcTcId)], thing)
+                                  - [[file:compiler/typecheck/TcBinds.hs::tc_single%20top_lvl%20sig_fn%20prag_fn%20lbind%20closed%20thing_inside][tc_single]] ∷ … → TcM (LHsBinds GhcTcId, thing)
+                                    - [[file:compiler/typecheck/TcBinds.hs::tcPolyBinds%20sig_fn%20prag_fn%20rec_group%20rec_tc%20closed%20bind_list][tcPolyBinds]]
+                                      - [[file:compiler/typecheck/TcBinds.hs::;%20let%20plan%20=%20decideGeneralisationPlan%20dflags%20bind_list%20closed%20sig_fn][plan]] = decideGeneralisationPlan dflags bind_list closed sig_fn
+                                      - case plan of
+                                        - [[file:compiler/typecheck/TcBinds.hs::NoGen%20->%20tcPolyNoGen%20rec_tc%20prag_fn%20sig_fn%20bind_list][NoGen]]              → [[file:compiler/typecheck/TcBinds.hs::tcPolyNoGen%20rec_tc%20prag_fn%20tc_sig_fn%20bind_list][tcPolyNoGen]]
+                                        - [[file:compiler/typecheck/TcBinds.hs::InferGen%20mn%20->%20tcPolyInfer%20rec_tc%20prag_fn%20sig_fn%20mn%20bind_list][InferGen]]        mn → [[file:compiler/typecheck/TcBinds.hs::tcPolyInfer%20rec_tc%20prag_fn%20tc_sig_fn%20mono%20bind_list][tcPolyInfer]]
+                                        - [[file:compiler/typecheck/TcBinds.hs::CheckGen%20lbind%20sig%20->%20tcPolyCheck%20prag_fn%20sig%20lbind][CheckGen]] lbind sig → [[file:compiler/typecheck/TcBinds.hs::tcPolyCheck%20prag_fn][tcPolyCheck]]
+                                    - [[file:compiler/typecheck/TcEnv.hs::tcExtendLetEnv%20top_lvl%20sig_fn%20(IsGroupClosed%20fvs%20fv_type_closed)][tcExtendLetEnv]] → [[file:compiler/typecheck/TcEnv.hs::tc_extend_local_env%20top_lvl%20extra_env%20thing_inside][tc_extend_local_env]]
+                                      - [[file:compiler/typecheck/TcEnv.hs::tcExtendLocalTypeEnv%20lcl_env@(TcLclEnv%20{%20tcl_env%20=%20lcl_type_env%20})%20tc_ty_things][tcExtendLocalTypeEnv]]
+                              - return (binds' ++ extra_binds', thing)
+                            - complete_matches ← [[file:compiler/typecheck/TcBinds.hs::tcCompleteSigs%20::%20%5BLSig%20GhcRn%5D%20->%20TcM%20%5BCompleteMatch%5D][tcCompleteSigs]] sigs
+                            - [[file:compiler/typecheck/TcBinds.hs::;%20let%20{%20tcg_env'%20=%20tcg_env%20{%20tcg_imp_specs][tcg_env']] = tcg_env {
+                              - tcg_imp_specs        += specs
+                              - tcg_complete_matches += complete_matches
+                            - return (tcg_env', tcl_env)
+                          - [[file:compiler/typecheck/TcInstDcls.hs::tcInstDecls2%20tycl_decls%20inst_decls][tcInstDecls2]] ∷ [LTyClDecl GhcRn] → [InstInfo GhcRn] → TcM (LHsBinds GhcTc)
+                            - mapM tcClassDecl2 class_decls, mapM tcInstDecl2 inst_decls
+                          - [[file:compiler/typecheck/TcRnDriver.hs::(foe_binds,%20foe_decls,%20foe_gres)%20<-%20tcForeignExports%20foreign_decls%20;][(foe_binds, foe_decls, foe_gres)]] ← [[file:compiler/typecheck/TcForeign.hs::tcForeignExports'%20decls][tcForeignExports']] (→'), tcAnnotations, tcRules
+                          - [[file:compiler/typecheck/TcRnDriver.hs::;%20tcg_env'%20=%20tcg_env%20{%20tcg_binds%20=%20tcg_binds%20tcg_env%20`unionBags`%20all_binds][tcg_env']]  = tcg_env {
+                            - tcg_binds += inst_binds + foe_binds
+                          - return (tcg_env', tcl_env)
+                        - return (tcg_env1, tcl_env, lie1)
+                      - captureTopConstraints $ checkMain explicit_mod_hdr
+                      - simplifyTop
+                      - zonkTcGblEnv
+                      - run_th_modfinalizers
+                      - finishTH
+                      - zonkTcGblEnv → zonkTopDecls
+                      - final_type_env = tcg_type_env tcg_env + bind_env_mf + bind_env
+                      - tcg_env' = tcg_env_mf {
+                        - tcg_binds    = binds' `unionBags` binds_mf
+                        - tcg_ev_binds = ev_binds' `unionBags` ev_binds_mf
+                        - tcg_imp_specs = imp_specs' ++ imp_specs_mf
+                        - tcg_fords    = fords' ++ fords_mf
+                        - setGlobalTypeEnv tcg_env' final_type_env
+                    - [[file:compiler/typecheck/TcRnExports.hs::tcRnExports%20::%20Bool%20--%20False%20=>%20no%20'module%20M(..)%20where'%20header%20at%20all][tcRnExports]] ∷ [LIE] → TcGblEnv → TcGblEnv
+                      - [[file:compiler/typecheck/TcRnExports.hs::exports_from_avail%20::%20Maybe%20(Located%20%5BLIE%20GhcPs%5D)][exports_from_avail]] → final_avails ∷ [[[file:compiler/basicTypes/Avail.hs::data%20AvailInfo%20=%20Avail%20Name%20--%20^%20An%20ordinary%20identifier%20in%20scope][AvailInfo]]], rn_exports
+                      - tcg_exports = final_avails ∷ [[[file:compiler/basicTypes/Avail.hs::data%20AvailInfo%20=%20Avail%20Name%20--%20^%20An%20ordinary%20identifier%20in%20scope][AvailInfo]]]
+                      - tcg_rn_exports = rn_exports
+                      - tcg_dus += usesOnly (availsToNameSetWithSelectors final_avails)
+                    - checkHiBootIface → [[file:compiler/typecheck/TcRnDriver.hs::checkHiBootIface'%20::%20%5BClsInst%5D%20->%20TypeEnv%20->%20%5BAvailInfo%5D][checkHiBootIface']] → ([[file:compiler/typecheck/TcRnDriver.hs::check_export%20boot_avail%20--%20boot_avail%20is%20exported%20by%20the%20boot%20iface][check_export]], [[file:compiler/typecheck/TcRnDriver.hs::check_cls_inst%20::%20DFunId%20->%20TcM%20(Maybe%20(Id,%20Id))][check_cls_inst]])
+              - /secondary/ [[file:compiler/main/HscMain.hs::if%20hsc_src%20==%20HsigFile][if hsc_src == HsigFile]]
+                - [[file:compiler/main/HscMain.hs::hscSimpleIface%20::%20HscEnv][hscSimpleIface]] → [[file:compiler/main/HscMain.hs::hscSimpleIface'%20::%20TcGblEnv][hscSimpleIface' :: TcGblEnv → Maybe Fingerprint → Hsc (ModIface, Bool, ModDetails)]]
+                  - [[file:compiler/main/TidyPgm.hs::mkBootModDetailsTc%20::%20HscEnv%20->%20TcGblEnv%20->%20IO%20ModDetails][mkBootModDetailsTc :: HscEnv -> TcGblEnv -> IO ModDetails]]
+                    - map (tidyClsInstDFun globaliseAndTidyId) insts
+                    - map (tidyPatSynIds   globaliseAndTidyId) pat_syns
+                    - mkBootTypeEnv (availsToNameSet exports) (typeEnvIds type_env) tcs fam_insts
+                    - extendTypeEnvWithPatSyns pat_syns' type_env1
+                    - map instanceDFunId insts'
+                    - extendTypeEnvWithIds type_env2 dfun_ids
+                  - [[file:compiler/iface/MkIface.hs::mkIfaceTc%20::%20HscEnv][mkIfaceTc]] ∷ HscEnv → … → ModDetails → TcGblEnv → IO (ModIface, Bool)
+                    - mkDependencies
+                    - mkUsageInfo
+                    - mkIface_
+                      - [[file:compiler/iface/MkIface.hs::intermediate_iface%20=%20ModIface%20{][intermediate_iface = ModIface {]]
+                      - addFingerprints
+                      - dumpIfSet_dyn
+                - [[file:compiler/typecheck/TcBackpack.hs::tcRnMergeSignatures%20::%20HscEnv%20->%20HsParsedModule%20->%20TcGblEnv%20{-%20from%20local%20sig%20-}%20->%20ModIface][tcRnMergeSignatures :: HscEnv -> HsParsedModule -> TcGblEnv -> ModIface]]
+              - return :: by above *if*: tcRnModule' or (tcRnMergeSignatures =<< hscSimpleIface)
+        - [[file:compiler/main/HscMain.hs::case%20e%20of][case]] (status-from-[[file:compiler/main/HscMain.hs::hscIncrementalFrontend][hscIncrementalFrontend]])
+          - Right (FrontendTypecheck tc_result, mb_old_hash) →
+            - [[file:compiler/main/HscMain.hs::finish%20summary%20tc_result%20mb_old_hash%20=%20do][finish]] ∷ [[file:compiler/main/HscTypes.hs::data%20ModSummary][ModSummary]] → TcGblEnv → Hsc (HscStatus, HomeModInfo)
+              : post-typechecking frontend (desugar and simplify)
+              : generates and writes out the final interface
+              - [[file:compiler/main/HscMain.hs::if%20should_desugar][if should_desugar]]
+                - [[file:compiler/main/HscMain.hs::hscDesugar'%20mod_location%20tc_result%20=%20do][hscDesugar']] ∷ ModLocation → TcGblEnv → Hsc [[file:compiler/main/HscTypes.hs::data%20ModGuts][ModGuts]]
+                - [[file:compiler/main/HscMain.hs::hscSimplify'%20plugins%20ds_result%20=%20do][hscSimplify']] ∷ [String] → [[file:compiler/main/HscTypes.hs::data%20ModGuts][ModGuts]] → Hsc [[file:compiler/main/HscTypes.hs::data%20ModGuts][ModGuts]]
+                  - [[file:compiler/simplCore/SimplCore.hs::core2core%20::%20HscEnv%20->%20ModGuts%20->%20IO%20ModGuts][core2core :: HscEnv -> ModGuts -> IO ModGuts]]
+                    - getCoreToDo
+                    - runCoreM $ [[file:compiler/simplCore/SimplCore.hs::runCorePasses%20::%20%5BCoreToDo%5D%20->%20ModGuts%20->%20CoreM%20ModGuts][runCorePasses :: {CoreToDo} -> ModGuts -> CoreM ModGuts]]
+                      - [[file:compiler/simplCore/SimplCore.hs::doCorePass%20::%20CoreToDo%20->%20ModGuts%20->%20CoreM%20ModGuts][doCorePass :: CoreToDo -> ModGuts -> CoreM ModGuts]]
+                        - CoreDoSimplify      :: simplifyPgm
+                        - CoreCSE             :: doPass cseProgram
+                        - CoreLiberateCase    :: doPassD liberateCase
+                        - CoreDoFloatInwards  :: floatInwards
+                        - CoreDoFloatOutwards :: doPassDUM (floatOutwards f)
+                        - CoreDoStaticArgs    :: doPassU doStaticArgs
+                        - CoreDoCallArity     :: doPassD callArityAnalProgram
+                        - CoreDoExitify       :: doPass exitifyProgra
+                        - CoreDoStrictness    :: doPassDFM dmdAnalProgram
+                        - CoreDoWorkerWrapper :: doPassDFU wwTopBinds
+                        - CoreDoSpecialising  :: specProgram
+                        - CoreDoSpecConstr    :: specConstrProgram
+                        - CoreDoPrintCore     :: observe   printCore
+                        - CoreDoRuleCheck     :: ruleCheckPass phase pat
+                        - CoreDoNothing       :: return
+                        - CoreDoPasses        :: runCorePasses passes
+                - [[file:compiler/main/HscMain.hs::hscNormalIface%20hsc_env%20simpl_result%20mb_old_iface%20=][hscNormalIface]] → [[file:compiler/main/HscMain.hs::hscNormalIface'%20simpl_result%20mb_old_iface%20=%20do][hscNormalIface']] ∷ HscEnv → ModGuts
+                                                   → IO (ModIface, Bool, ModDetails, CgGuts)
+                  : compute a ModIface
+                  - [[file:compiler/main/TidyPgm.hs::tidyProgram%20hsc_env%20(ModGuts%20{%20mg_module%20=%20mod][tidyProgram]]
+                  - [[file:compiler/iface/MkIface.hs::mkIface%20hsc_env%20maybe_old_fingerprint%20mod_details][mkIface]] ∷ HscEnv → ModDetails → ModGuts → IO ModIface
+                    - [[file:compiler/iface/MkIface.hs::mkIface_%20::%20HscEnv%20->%20Maybe%20Fingerprint%20->%20Module%20->%20HscSource][mkIface_]] ∷ HscEnv → ModDetails → Open ModGuts{..} → IO ModIface
+                      - [[file:compiler/iface/MkIface.hs::intermediate_iface%20=%20ModIface%20{][intermediate_iface]] = ModIface {
+                        - mi_exports = ([[file:compiler/iface/MkIface.hs::mkIfaceExports%20::%20%5BAvailInfo%5D%20->%20%5BIfaceExport%5D%20--%20Sort%20to%20make%20canonical][mkIfaceExports]] ∷ [[[file:compiler/basicTypes/Avail.hs::data%20AvailInfo%20=%20Avail%20Name%20--%20^%20An%20ordinary%20identifier%20in%20scope][AvailInfo]]] -> [[[file:compiler/main/HscTypes.hs::type%20IfaceExport%20=%20AvailInfo][IfaceExport]]]) exports
+                          - [[file:compiler/main/HscTypes.hs::type%20IfaceExport%20=%20AvailInfo][type IfaceExport]] = AvailInfo
+                      - [[file:compiler/iface/MkIface.hs::(new_iface,%20no_change_at_all)][new_iface]] ← addFingerprints intermediate_iface
+                      - [[file:compiler/iface/MkIface.hs::let%20final_iface%20=%20new_iface{%20mi_globals%20=%20maybeGlobalRdrEnv%20rdr_env%20}][final_iface]] = new_iface{ mi_globals = maybeGlobalRdrEnv rdr_env }
+                - [[file:compiler/main/HscMain.hs::hscMaybeWriteIface%20::%20DynFlags%20->%20ModIface%20->%20Bool%20->%20ModSummary%20->%20IO%20()][hscMaybeWriteIface]] → [[file:compiler/main/HscMain.hs::hscWriteIface%20::%20DynFlags%20->%20ModIface%20->%20Bool%20->%20ModSummary%20->%20IO%20()][hscWriteIface]] (iface, dynIface) → [[file:compiler/iface/MkIface.hs::writeIfaceFile%20::%20DynFlags%20->%20FilePath%20->%20ModIface%20->%20IO%20()][writeIfaceFile]] → [[file:compiler/iface/BinIface.hs::writeBinIface%20::%20DynFlags%20->%20FilePath%20->%20ModIface%20->%20IO%20()][writeBinIface]]
+          - /secondary/ Left old_checked_iface → HomeModInfo old_checked_iface <$> [[file:compiler/main/HscMain.hs::genModDetails%20::%20HscEnv%20->%20ModIface%20->%20IO%20ModDetails][genModDetails]]
+            - [[file:compiler/iface/TcIface.hs::typecheckIface%20::%20ModIface%20--%20Get%20the%20decls%20from%20here][typecheckIface :: ModIface -> IfG ModDetails]]
+              - loadDecls
+              - mapM tcIfaceInst (mi_insts iface)
+              - mapM tcIfaceFamInst (mi_fam_insts iface)
+              - tcIfaceRules ignore_prags (mi_rules iface)
+              - tcIfaceAnnotations (mi_anns iface)
+              - ifaceExportNames (mi_exports iface)
+              - tcIfaceCompleteSigs (mi_complete_sigs iface)
+      - [[file:compiler/main/DriverPipeline.hs::case%20(status,%20hsc_lang)%20of][case]] (status-from-[[file:compiler/main/HscMain.hs::hscIncrementalCompile%20::%20Bool][hscIncrementalCompile]], hsc_lang)
+        - [[file:compiler/main/DriverPipeline.hs::(HscRecomp%20cgguts%20summary,%20_)%20->%20do][(HscRecomp]], ≢ HscInterpreted
+          - [[file:compiler/main/DriverPipeline.hs::runPipeline%20stop_phase%20hsc_env0%20(input_fn,%20mb_phase)][runPipeline]]
+* Renamer: value binding RHS
+  : General version used both from the top-level and for local things
+  : Assumes the LHS vars are in scope
+  - [[file:compiler/rename/RnSource.hs::(rn_val_decls,%20bind_dus)%20<-%20if%20is_boot][(rn_val_decls, bind_dus)]] ← [[file:compiler/rename/RnBinds.hs::rnValBindsRHS%20ctxt%20(ValBinds%20_%20mbinds%20sigs)][rnValBindsRHS]], rnTopBindsBoot
+    ∷ [[file:compiler/rename/RnEnv.hs::data%20HsSigCtxt][HsSigCtxt]] → [[file:compiler/hsSyn/HsBinds.hs::data%20HsValBindsLR%20idL%20idR][HsValBindsLR]] [[file:compiler/hsSyn/HsExtension.hs::type%20GhcRn%20=%20GhcPass%20'Renamed%20--%20Old%20'Name'%20type%20param][GhcRn]] [[file:compiler/hsSyn/HsExtension.hs::type%20GhcPs%20=%20GhcPass%20'Parsed%20--%20Old%20'RdrName'%20type%20param][GhcPs]]
+    → RnM ([[file:compiler/hsSyn/HsBinds.hs::type%20HsValBinds%20id%20=%20HsValBindsLR%20id%20id][HsValBinds]] GhcRn, [[[file:compiler/basicTypes/NameSet.hs::type%20DefUse%20=%20(Maybe%20Defs,%20Uses)][DefUse]]])
+    : General version used both from the top-level and for local things
+    : Assumes the LHS vars are in scope
+    - [[file:compiler/rename/RnBinds.hs::=%20do%20{%20(sigs',%20sig_fvs)%20<-%20renameSigs%20ctxt%20sigs][(sigs', sig_fvs)]] ← [[file:compiler/rename/RnBinds.hs::renameSigs%20::%20HsSigCtxt][renameSigs]] ctxt sigs
+    - [[file:compiler/rename/RnBinds.hs::;%20binds_w_dus%20<-%20mapBagM%20(rnLBind%20(mkScopedTvFn%20sigs'))%20mbinds][binds_w_dus]] ← mapBagM ([[file:compiler/rename/RnBinds.hs::rnLBind%20::%20(Name%20->%20%5BName%5D)%20--%20Signature%20tyvar%20function][rnLBind]] (mkScopedTvFn sigs')) mbinds
+      - [[file:compiler/rename/RnBinds.hs::rnBind%20sig_fn%20bind@(FunBind%20{%20fun_id%20=%20name][rnBind]] ∷ (Name -> [Name]) → HsBindLR … → RnM (HsBind GhcRn, [Name], [[file:compiler/basicTypes/NameSet.hs::type%20Uses%20=%20NameSet][Uses]])
+        - [[file:compiler/rename/RnBinds.hs::rnBind%20sig_fn%20bind@(FunBind%20{%20fun_id%20=%20name][rnBind]] bind@FunBind { fun_id = name, fun_matches = matches }
+          - [[file:compiler/rename/RnBinds.hs::;%20(matches',%20rhs_fvs)%20<-%20bindSigTyVarsFV%20(sig_fn%20plain_name)%20$][(matches', rhs_fvs)]] ← [[file:compiler/rename/RnBinds.hs::rnMatchGroup%20ctxt%20rnBody%20(MG%20{%20mg_alts%20=%20L%20_%20ms,%20mg_origin%20=%20origin%20})][rnMatchGroup]] rnLExpr matches
+            - [[file:compiler/rename/RnBinds.hs::rnMatch%20ctxt%20rnBody%20=%20wrapLocFstM%20(rnMatch'%20ctxt%20rnBody)][rnMatch]] → [[file:compiler/rename/RnBinds.hs::rnMatch'%20ctxt%20rnBody%20(Match%20{%20m_ctxt%20=%20mf,%20m_pats%20=%20pats,%20m_grhss%20=%20grhss%20})][rnMatch']]
+              - [[file:compiler/rename/RnBinds.hs::rnGRHSs%20ctxt%20rnBody%20(GRHSs%20_%20grhss%20(L%20l%20binds))][rnGRHSs]] → [[file:compiler/rename/RnBinds.hs::rnGRHS%20ctxt%20rnBody%20=%20wrapLocFstM%20(rnGRHS'%20ctxt%20rnBody)][rnGRHS]] → [[file:compiler/rename/RnBinds.hs::rnGRHS'%20ctxt%20rnBody%20(GRHS%20_%20guards%20rhs)][rnGRHS']] ∷ RnM ([[file:compiler/hsSyn/HsExpr.hs::data%20GRHS%20p%20body%20=%20GRHS%20(XCGRHS%20p%20body)][GRHS]] GhcRn (Located (body GhcRn)), [[file:compiler/basicTypes/NameSet.hs::type%20FreeVars%20=%20NameSet][FreeVars]])
+                - [[file:compiler/rename/RnExpr.hs::rnStmts%20ctxt%20rnBody%20=%20rnStmtsWithPostProcessing%20ctxt%20rnBody%20noPostProcessStmts][rnStmts]] → [[file:compiler/rename/RnExpr.hs::rnStmtsWithPostProcessing%20ctxt%20rnBody%20ppStmts%20stmts%20thing_inside][rnStmtsWithPostProcessing]]
+                - [[file:compiler/rename/RnExpr.hs::rnLExpr%20=%20wrapLocFstM%20rnExpr][rnLExpr]] → [[file:compiler/rename/RnExpr.hs::rnExpr%20(HsVar%20_%20(L%20l%20v))][rnExpr]] ∷ [[file:compiler/hsSyn/HsExpr.hs::data%20HsExpr%20p][HsExpr]] GhcPs -> RnM ([[file:compiler/hsSyn/HsExpr.hs::data%20HsExpr%20p][HsExpr]] GhcRn, FreeVars)
+                  - [[file:compiler/rename/RnExpr.hs::rnExpr%20(HsVar%20_%20(L%20l%20v))][rnExpr]] ([[file:compiler/hsSyn/HsExpr.hs::=%20HsVar%20(XVar%20p)][HsVar]] (XVar p) (Located ([[file:compiler/hsSyn/HsExtension.hs::type%20family%20IdP%20p][IdP]] p))) -- IdP GhcPs = RdrName
+                    - [[file:compiler/rename/RnEnv.hs::lookupOccRn_overloaded%20overload_ok][lookupOccRn_overloaded]] ∷ [[file:compiler/basicTypes/RdrName.hs::|%20Orig%20Module%20OccName][RdrName]] → RnM (Maybe (Either Name [Name]))
+                      - [[file:compiler/rename/RnEnv.hs::lookupOccRnX_maybe%20globalLookup%20wrapper%20rdr_name][lookupOccRnX_maybe]]
+                        - [[file:compiler/rename/RnEnv.hs::lookupLocalOccRn_maybe%20rdr_name][lookupLocalOccRn_maybe]] ∷ [[file:compiler/basicTypes/RdrName.hs::|%20Orig%20Module%20OccName][RdrName]] → RnM (Maybe Name)
+                          - [[file:compiler/basicTypes/RdrName.hs::lookupLocalRdrEnv%20(LRE%20{%20lre_env%20=%20env,%20lre_in_scope%20=%20ns%20})%20rdr][lookupLocalRdrEnv]] ∷ LocalRdrEnv → [[file:compiler/basicTypes/RdrName.hs::|%20Orig%20Module%20OccName][RdrName]] → Maybe Name
+                            : rdr (LRE { lre_env = env, lre_in_scope = ns })
+                            - Unqual occ ← rdr      = lookupOccEnv env occ
+                            - Exact name ← rdr,
+                              name `elemNameSet` ns = Just name
+                            - otherwise             = Nothing
+                      - [[file:compiler/rename/RnEnv.hs::lookupGlobalOccRn_overloaded%20::%20Bool%20->%20RdrName][lookupGlobalOccRn_overloaded]] ∷ RdrName → RnM (Maybe (Either Name [Name]))
+                        : Like 'lookupOccRn_maybe', but with a more informative result if
+                        : the 'RdrName' happens to be a record selector:
+                        - [[file:compiler/rename/RnEnv.hs::lookupGreRn_helper%20::%20RdrName%20->%20RnM%20GreLookupResult][lookupGreRn_helper]] ∷ [[file:compiler/basicTypes/RdrName.hs::|%20Orig%20Module%20OccName][RdrName]] → RnM GreLookupResult
+                          - [[file:compiler/basicTypes/RdrName.hs::lookupGRE_RdrName%20rdr_name%20env][lookupGRE_RdrName]] ∷ [[file:compiler/basicTypes/RdrName.hs::|%20Orig%20Module%20OccName][RdrName]] → GlobalRdrEnv → [GRE]
+                            - [[file:compiler/basicTypes/RdrName.hs::|%20Orig%20Module%20OccName][data RdrName]]
+                              - Unqual OccName          -- ordinary, unqualified occurrences…
+                              - Qual ModuleName OccName -- A qualified name written by the user in /source/ code
+                                                        -- Module is from which the name is imported.
+                              - Orig Module OccName     -- From generated code (deriving). Module is the /defining/ module
+                              - Exact Name              -- 1. [] (,), 2. TH
+                            - case lookupOccEnv gre_env $ [[file:compiler/basicTypes/RdrName.hs::rdrNameOcc%20::%20RdrName%20->%20OccName][rdrNameOcc]] rdr_name
+                              - Just gres → [[file:compiler/basicTypes/RdrName.hs::pickGREs%20(Qual%20mod%20_)%20gres%20=%20mapMaybe%20(pickQualGRE%20mod)%20gres][pickGREs]] rdr_name gres
+                                  #+BEGIN_QUOTE
+                                : Takes a list of GREs which have the right OccName 'x'
+                                : Pick those GREs that are in scope
+                                : * Qualified,   as 'M.x'  if want_qual    is Qual M _
+                                : * Unqualified, as 'x'    if want_unqual  is Unqual _
+                                : Return each such GRE, with its ImportSpecs filtered, to reflect
+                                : how it is in scope qualified or unqualified respectively.
+                                  See Note [[file:compiler/basicTypes/RdrName.hs::{-%20Note%20%5BGRE%20filtering%5D][GRE filtering]]:
+                                  (pickGREs rdr gres) takes a list of GREs which have the same OccName
+                                  as 'rdr', say "x".  It does two things:
+
+                                  (a) filters the GREs to a subset that are in scope
+                                      * Qualified,   as 'M.x'  if want_qual    is Qual M _
+                                      * Unqualified, as 'x'    if want_unqual  is Unqual _
+
+                                  (b) for that subset, filter the provenance field (gre_lcl and gre_imp)
+                                      to ones that brought it into scope qualified or unqualified resp.
+
+                                  Example:
+                                        module A ( f ) where
+                                        import qualified Foo( f )
+                                        import Baz( f )
+                                        f = undefined
+
+                                  Let's suppose that Foo.f and Baz.f are the same entity really, but the local
+                                  'f' is different, so there will be two GREs matching "f":
+                                     gre1:  gre_lcl = True,  gre_imp = []
+                                     gre2:  gre_lcl = False, gre_imp = [ imported from Foo, imported from Bar ]
+
+                                  The use of "f" in the export list is ambiguous because it's in scope
+                                  from the local def and the import Baz(f); but *not* the import qualified Foo.
+                                  pickGREs returns two GRE
+                                     gre1:   gre_lcl = True,  gre_imp = []
+                                     gre2:   gre_lcl = False, gre_imp = [ imported from Bar ]
+
+                                  Now the "ambiguous occurrence" message can correctly report how the
+                                  ambiguity arises.
+                                  #+END_QUOTE
+                                - [[file:compiler/basicTypes/RdrName.hs::pickUnqualGRE%20gre@(GRE%20{%20gre_lcl%20=%20lcl,%20gre_imp%20=%20iss%20})][pickUnqualGRE]] ∷ GRE → Maybe GRE
+                                - [[file:compiler/basicTypes/RdrName.hs::pickQualGRE%20mod%20gre@(GRE%20{%20gre_name%20=%20n,%20gre_lcl%20=%20lcl,%20gre_imp%20=%20iss%20})][pickQualGRE]] ∷ ModuleName → GRE → Maybe GRE
+                          - addUsedGRE
+                        - [[file:compiler/rename/RnEnv.hs::lookupExactOrOrig%20::%20RdrName%20->%20(Name%20->%20r)%20->%20RnM%20r%20->%20RnM%20r][lookupExactOrOrig]] ∷ [[file:compiler/basicTypes/RdrName.hs::|%20Orig%20Module%20OccName][RdrName]] → (Name → r) → RnM r → RnM r
+                          - [[file:compiler/rename/RnEnv.hs::lookupExactOcc%20name][lookupExactOcc]] ∷ Name → RnM Name
+                            - [[file:compiler/rename/RnEnv.hs::lookupExactOcc_either%20name][lookupExactOcc_either]]
+                              - Lookup an @Exact RdrName@. See Note [[file:compiler/rename/RnEnv.hs::Exact%20RdrNames%20are%20generated%20by%20Template%20Haskell.%20See%20Note%20%5BBinders][Looking up Exact RdrNames]].
+                              : Exact RdrNames are generated by Template Haskell
+                              … … …
+                          - [[file:compiler/iface/IfaceEnv.hs::lookupOrig%20::%20Module%20->%20OccName%20->%20TcRnIf%20a%20b%20Name][lookupOrig]] ∷ Module → OccName → TcRnIf a b Name
+                            : Look up the 'Name' for a given 'Module' and 'OccName'.
+                            - [[file:compiler/iface/IfaceEnv.hs::lookupNameCache%20mod%20occ%20name_cache%20=][lookupNameCache]] ∷ Module → OccName → NameCache → (NameCache, Name)
+                              : Lookup up the (Module,OccName) in the NameCache
+                              : unless found, allocate a fresh original name and extend cache
+                              - case lookupOrigNameCache of Nothing →
+                                - [[file:compiler/basicTypes/Name.hs::mkExternalName%20uniq%20mod%20occ%20loc][mkExternalName]] ∷ Module → OccName → Name
+                            - [[file:compiler/iface/IfaceEnv.hs::updNameCacheTc%20mod%20occ%20upd_fn%20=%20do%20{][updNameCacheTc]] → [[file:compiler/iface/IfaceEnv.hs::updNameCacheIO%20hsc_env%20mod%20occ%20upd_fn%20=%20do%20{][updNameCacheIO]] → [[file:compiler/main/HscTypes.hs::updNameCache%20ncRef%20upd_fn][updNameCache]] → atomicModifyIORef'
+                    - Just name → finishHsVar (L l name)
+            - rnLExpr
+          - [[file:compiler/rename/RnBinds.hs::;%20let%20fvs'%20=%20filterNameSet%20(nameIsLocalOrFrom%20mod)%20rhs_fvs][fvs']] = filterNameSet (nameIsLocalOrFrom mod) rhs_fvs
+            : Keep locally-defined Names
+          - return ( bind { fun_matches = matches', fun_ext = fvs' }
+                   , [plain_name]
+                   , rhs_fvs )
+    - [[file:compiler/rename/RnBinds.hs::;%20let%20!(anal_binds,%20anal_dus)%20=%20depAnalBinds%20binds_w_dus][(anal_binds, anal_dus)]] = depAnalBinds binds_w_dus
+    - [[file:compiler/rename/RnBinds.hs::valbind'_dus%20=%20anal_dus%20`plusDU`%20usesOnly%20sig_fvs][valbind'_dus]] = anal_dus + …
+    - type [[file:compiler/basicTypes/NameSet.hs::type%20DefUse%20=%20(Maybe%20Defs,%20Uses)][DefUse]]  = (Maybe [[file:compiler/basicTypes/NameSet.hs::type%20Defs%20=%20NameSet][Defs]], [[file:compiler/basicTypes/NameSet.hs::type%20Uses%20=%20NameSet][Uses]]) -- Maybe NameSet, NameSet
+    - return XValBindsLR (NValBinds anal_binds sigs'), valbind'_dus
+* Picture
+  - export/maybeexpas  ∷ LIE.IEModuleContents _ ModuleName (Maybe ModuleName)
+  - [[file:compiler/typecheck/TcRnExports.hs::;%20let%20do_it%20=%20exports_from_avail%20real_exports%20rdr_env%20imports%20this_mod][tcRnExports]]        ∷ [LIE] → TcGblEnv → TcGblEnv
+    - final_avails     ∷ [[[file:compiler/basicTypes/Avail.hs::data%20AvailInfo%20=%20Avail%20Name%20--%20^%20An%20ordinary%20identifier%20in%20scope][AvailInfo]]] from exports_from_avail
+    - effects :: exports_from_avail
+    - essence ::
+      - tcg_exports    = final_avails
+      - tcg_rn_exports = from exports_from_avail
+      - tcg_dus        += susesOnly (availsToNameSetWithSelectors final_avails)
+  - [[file:compiler/typecheck/TcRnExports.hs::exports_from_avail%20(Just%20(dL->L%20_%20rdr_items))%20rdr_env%20imports%20this_mod][exports_from_avail]] ∷ [LIE] → GlobalRdrEnv → [[file:compiler/typecheck/TcRnTypes.hs::data%20ImportAvails][ImportAvails]] → Module
+                       → Maybe [(LIE, [[[file:compiler/basicTypes/Avail.hs::data%20AvailInfo%20=%20Avail%20Name%20--%20^%20An%20ordinary%20identifier%20in%20scope][AvailInfo]]])], [[[file:compiler/basicTypes/Avail.hs::data%20AvailInfo%20=%20Avail%20Name%20--%20^%20An%20ordinary%20identifier%20in%20scope][AvailInfo]]]
+    - GlobalRdrEnv   :: OccEnv [GlobalRdrElt] ≡ Map OccName [GRE]
+    - ImportAvails
+      - imp_mods     :: ImportedMods -- ModuleEnv [ImportedModsVal],
+      - imp_dep_mods :: ModuleNameEnv (ModuleName, IsBootInterface),
+      - imp_dep_pkgs :: Set InstalledUnitId,
+      - imp_orphs    :: [Module],
+    - AvailInfo          ∷ Avail Name | AvailTC Name [Name] [FieldLabel]
+    - [[file:compiler/typecheck/TcRnExports.hs::accumExports%20::%20(ExportAccum%20->%20x%20->%20TcRn%20(Maybe%20(ExportAccum,%20y)))][accumExports]]       ∷ (ExportAccum → x → TcRn (Maybe (ExportAccum, y))) → [x] → [y]
+    - effects :: exports_from_item
+    - essence :: [(LIE, [[[file:compiler/basicTypes/Avail.hs::data%20AvailInfo%20=%20Avail%20Name%20--%20^%20An%20ordinary%20identifier%20in%20scope][AvailInfo]]])], [[[file:compiler/basicTypes/Avail.hs::data%20AvailInfo%20=%20Avail%20Name%20--%20^%20An%20ordinary%20identifier%20in%20scope][AvailInfo]]] -- the latter a total sum
+  - [[file:compiler/typecheck/TcRnExports.hs::exports_from_item%20::%20ExportAccum%20->%20LIE%20GhcPs][exports_from_item]] ∷ LIE → LIE, [[[file:compiler/basicTypes/Avail.hs::data%20AvailInfo%20=%20Avail%20Name%20--%20^%20An%20ordinary%20identifier%20in%20scope][AvailInfo]]], ExportAccum
+                      ≡ LIE → LIE, [[[file:compiler/basicTypes/Avail.hs::data%20AvailInfo%20=%20Avail%20Name%20--%20^%20An%20ordinary%20identifier%20in%20scope][AvailInfo]]], OccEnv (Name, IE GhcPs), UniqSet ModuleName
+    - ExportAccum        ∷ ExportAccum (OccEnv (Name, IE GhcPs)) (UniqSet ModuleName)
+    - [[file:compiler/typecheck/TcRnExports.hs::type%20ExportOccMap%20=%20OccEnv%20(Name,%20IE%20GhcPs)][type ExportOccMap]]  ∷ OccEnv (Name, IE GhcPs)
+    - [[file:compiler/rename/RnEnv.hs::addUsedGREs%20::%20%5BGlobalRdrElt%5D%20->%20RnM%20()][addUsedGREs]]        ∷ tcg_used_gres += filterOut isLocalGRE gres
+    - gre_prs            ∷ pickGREsModExp mod (globalRdrEnvElts rdr_env)
+    - effects :: addUsedGREs gre_prs (in exports_from_item)
+    - essence :: [[[file:compiler/basicTypes/Avail.hs::data%20AvailInfo%20=%20Avail%20Name%20--%20^%20An%20ordinary%20identifier%20in%20scope][AvailInfo]]] ≡ map (availFromGRE . fst) gre_prs
+  - =NEXT= ::
+    1. interpretation of the Avails, OccEnv, UniqSet Mods?
+  - import/maybealiases ∷ [LIE GhcPs]
+* [[file:compiler/main/GhcMake.hs::upsweep_mod%20hsc_env%20mHscMessage%20old_hpt%20(stable_obj,%20stable_bco)%20summary%20mod_index%20nmods][upsweep_mod]] → [[file:compiler/main/DriverPipeline.hs::compileOne'%20::%20Maybe%20TcGblEnv][compileOne :: … → IO HomeModInfo]] → [[file:compiler/main/DriverPipeline.hs::compileOne'%20::%20Maybe%20TcGblEnv][compileOne' :: … → IO HomeModInfo]] -- Compile a single module…
+  - [[file:compiler/main/HscMain.hs::hscIncrementalCompile%20::%20Bool][hscIncrementalCompile :: Maybe TcGblEnv → HscEnv → ModSummary → Maybe Modiface → IO (HscStatus, HomeModInfo)]]
+    - [[file:compiler/main/HscMain.hs::hscIncrementalFrontend%20::%20Bool%20--%20always%20do%20basic%20recompilation%20check?][hscIncrementalFrontend :: … → Hsc (Either ModIface (FrontendResult, Maybe Fingerprint))]]
+      - checkOldIface
+      - genericHscFrontend | getHooked hscFrontendHook genericHscFrontend' |
+        - hscFileFrontEnd
+          - [[file:compiler/main/HscMain.hs::hscTypecheck%20::%20Bool%20--%20^%20Keep%20renamed%20source?][hscTypecheck :: Bool → ModSummary → Maybe HsParsedModule → Hsc TcGblEnv]]
+            - [[file:compiler/main/HscMain.hs::hsc_typecheck%20::%20Bool%20--%20^%20Keep%20renamed%20source?][hsc_typecheck :: Bool → ModSummary → Maybe HsParsedModule → Hsc TcGblEnv]]
+              - [[file:compiler/typecheck/TcBackpack.hs::tcRnInstantiateSignature%20::][tcRnInstantiateSignature :: HscEnv -> Module -> RealSrcSpan -> IO (Messages, Maybe TcGblEnv)]]
+                - [[file:compiler/typecheck/TcBackpack.hs::instantiateSignature%20::%20TcRn%20TcGblEnv][instantiateSignature :: TcRn TcGblEnv]]
+              - [[file:compiler/main/HscMain.hs::hscParse'%20::%20ModSummary%20->%20Hsc%20HsParsedModule][hscParse' :: ModSummary -> Hsc HsParsedModule]]
+              - [[file:compiler/main/HscMain.hs::tcRnModule'%20::%20ModSummary%20->%20Bool%20->%20HsParsedModule][tcRnModule']] → [[file:compiler/typecheck/TcRnDriver.hs::tcRnModule%20::%20HscEnv][tcRnModule :: HscEnv → ModSummary → Bool → HsParsedModule → IO (Messages, Maybe TcGblEnv)]]
+                - [[file:compiler/typecheck/TcRnDriver.hs::tcRnModuleTcRnM%20::%20HscEnv][tcRnModuleTcRnM :: HscEnv → ModSummmary → HsParsedModule → (Module, SrcSpan) → TcRn TcGblEnv]]
+                  - =IMPORTS= ::
+                  - [[file:compiler/typecheck/TcRnDriver.hs::tcRnImports%20::%20HscEnv%20->%20%5BLImportDecl%20GhcPs%5D%20->%20TcM%20TcGblEnv][tcRnImports :: HscEnv -> {LImportDecl GhcPs} -> TcM TcGblEnv]]
+                    - [[file:compiler/rename/RnNames.hs::rnImports%20::%20%5BLImportDecl%20GhcPs%5D][rnImports :: {LImportDecl GhcPs}]]
+                      - [[file:compiler/rename/RnNames.hs::rnImportDecl%20::%20Module%20->%20LImportDecl%20GhcPs][rnImportDecl :: Module -> LImportDecl GhcPs]]
+                        - maybe honor missingImportListWarn for level-1's
+                        - iface <- [[file:compiler/iface/LoadIface.hs::loadSrcInterface_maybe%20::%20SDoc][loadSrcInterface]] want_boot (fmap sl_fs mb_pkg)
+                          - [[file:compiler/iface/LoadIface.hs::loadInterface%20::%20SDoc%20->%20Module%20->%20WhereFrom][loadInterface :: SDoc -> Module -> WhereFrom]]
+                            - lookupIfaceByModule
+                            - [[file:compiler/iface/LoadIface.hs::computeInterface%20doc_str%20hi_boot_file%20mod0%20=%20do][compiler/iface/LoadIface.hs   computeInterface doc_str hi_boot_file mod0 = do]]
+                              - [[file:compiler/iface/LoadIface.hs::findAndReadIface%20doc_str%20mod%20wanted_mod_with_insts%20hi_boot_file][compiler/iface/LoadIface.hs   findAndReadIface doc_str mod wanted_mod_with_insts hi_boot_file]]
+                                - findExactModule
+                                - [[file:compiler/iface/LoadIface.hs::readIface%20::%20Module%20->%20FilePath][compiler/iface/LoadIface.hs   readIface :: Module -> FilePath]] [[file:compiler/iface/LoadIface.hs::readIface%20wanted_mod%20file_path][compiler/iface/LoadIface.hs   readIface wanted_mod file_path]]
+                                  - [[file:compiler/iface/BinIface.hs::readBinIface%20checkHiWay%20traceBinIFaceReading%20hi_path%20=%20do][compiler/iface/BinIface.hs   readBinIface checkHiWay traceBinIFaceReading hi_path = do]]
+                                    - [[file:compiler/iface/BinIface.hs::readBinIface_%20dflags%20checkHiWay%20traceBinIFaceReading%20hi_path%20ncu%20=%20do][compiler/iface/BinIface.hs   readBinIface_ dflags checkHiWay traceBinIFaceReading hi_path ncu = do]]
+                              - [[file:compiler/backpack/RnModIface.hs::rnModIface%20hsc_env%20insts%20nsubst%20iface%20=%20do][compiler/backpack/RnModIface.hs   rnModIface hsc_env insts nsubst iface = do]]
+                                - sig_of <- fmap Just (rnModule x) $ mi_sig_of iface
+                                - mod <- rnModule (mi_module iface)
+                                - exports <- mapM rnAvailInfo (mi_exports iface)
+                                  - [[file:compiler/backpack/RnModIface.hs::rnAvailInfo%20::%20Rename%20AvailInfo][compiler/backpack/RnModIface.hs   rnAvailInfo :: Rename AvailInfo]]
+                                    - [[file:compiler/backpack/RnModIface.hs::rnIfaceGlobal%20::%20Name%20->%20ShIfM%20Name][compiler/backpack/RnModIface.hs   rnIfaceGlobal :: Name -> ShIfM Name]]
+                                    - [[file:compiler/backpack/RnModIface.hs::rnFieldLabel%20::%20Rename%20FieldLabel][compiler/backpack/RnModIface.hs   rnFieldLabel :: Rename FieldLabel]]
+                                    - [[file:compiler/iface/IfaceEnv.hs::setNameModule%20::%20Maybe%20Module%20->%20Name%20->%20TcRnIf%20m%20n%20Name][compiler/iface/IfaceEnv.hs   setNameModule :: Maybe Module -> Name -> TcRnIf m n Name]]
+                                - decls <- mapM rnIfaceDecl' (mi_decls iface)
+                                  - [[file:compiler/backpack/RnModIface.hs::rnIfaceDecl%20::%20Rename%20IfaceDecl][compiler/backpack/RnModIface.hs   rnIfaceDecl :: Rename IfaceDecl]]
+                                - insts <- mapM rnIfaceClsInst (mi_insts iface)
+                                - fams <- mapM rnIfaceFamInst (mi_fam_insts iface)
+                                - deps <- rnDependencies (mi_deps iface)
+                                - iface :: { mod, sig_of, insts, fams, exports, decls, deps }
+                            - mapM (loadDecl ignore_prags) <- mi_decls         iface
+                            - mapM tcIfaceInst             <- mi_insts         iface
+                            - mapM tcIfaceFamInst          <- mi_fam_insts     iface
+                            - tcIfaceRules ignore_prags    <- mi_rules         iface
+                            - tcIfaceAnnotations           <- mi_anns          iface
+                            - tcIfaceCompleteSigs          <- mi_complete_sigs iface
+                            - addDeclsToPTE, extendModule{Env,MatchMap}, extend{,Ann,Fam}InstEnvList, addEpsInStats
+                            - updateEps_
+                        - [[file:compiler/rename/RnNames.hs::filterImports%20iface%20decl_spec%20(Just%20(want_hiding,%20L%20l%20import_items))][filterImports iface decl_spec (Just (want_hiding, L l import_items))]]
+                          - --> want_hiding :: Bool, import_items :: Located [LIE GhcPs]
+                          - <-- :: RnM (Maybe (Bool, Located [LIE GhcRn]), [GlobalRdrElt])
+                            - want_hiding
+                            - map fst items2 <- concat items1 <- mapM lookup_lie import_items
+                            - gres <- gresFromAvails <- pruned_avails <- filterAvails keep <- all_avails <- mi_exports iface
+                                   <- concatMap gresFromIE items2
+                        - imp_spec <- ImpDeclSpec
+                        - (new_imp_decl, gres) <- (filterImports <- (iface, imp_details, imp_spec)
+                        - potential_gres <- mkGlobalRdrEnv <- filterImports <- imp_spec
+                        - <-- :: RnM (LImportDecl GhcRn, GlobalRdrEnv, ImportAvails, AnyHpcUsage)
+                          - new_imp_decl
+                          - gbl_env <- mkGlobalRdrEnv <- gres
+                          - imports <- calculateAvails <- ImportedModsVal potential_gres
+                          - mi_hpc <- iface <- loadSrcInterface
+                  - =EXPORTS= ::
+                  - [[file:compiler/typecheck/TcRnExports.hs::tcRnExports%20::%20Bool%20--%20False%20=>%20no%20'module%20M(..)%20where'%20header%20at%20all][tcRnExports :: Bool -- False => no 'module M(..) where' header at all]]
+                    - [[file:compiler/typecheck/TcRnExports.hs::exports_from_avail%20::%20Maybe%20(Located%20%5BLIE%20GhcPs%5D)][exports_from_avail :: {LIE GhcPs} → GlobalRdrEnv → ImportAvails → (Maybe {(LIE GhcRn, Avails)}, Avails)]]
+                      - types:
+                        - [[file:compiler/typecheck/TcRnExports.hs::data%20ExportAccum%20--%20The%20type%20of%20the%20accumulating%20parameter%20of][data ExportAccum]] = ExportAccum ExportOccMap (UniqSet ModuleName)
+                          - [[file:compiler/utils/UniqSet.hs::newtype%20UniqSet%20a%20=%20UniqSet%20{getUniqSet'%20::%20UniqFM%20a}][newtype UniqSet a = UniqSet {getUniqSet' :: UniqFM a}]]
+                        - [[file:compiler/typecheck/TcRnExports.hs::type%20ExportOccMap%20=%20OccEnv%20(Name,%20IE%20GhcPs)][type ExportOccMap]] = OccEnv (Name, IE GhcPs)
+                          - [[file:compiler/basicTypes/OccName.hs::newtype%20OccEnv%20a%20=%20A%20(UniqFM%20a)][newtype OccEnv a]] = A (UniqFM a), [[file:compiler/utils/UniqFM.hs::newtype%20UniqFM%20ele%20=%20UFM%20(M.IntMap%20ele)][newtype UniqFM ele]] = UFM (M.IntMap ele)
+                      - [[file:compiler/typecheck/TcRnExports.hs::exports_from_item%20::%20ExportAccum%20->%20LIE%20GhcPs][exports_from_item :: ExportAccum → LIE GhcPs → RnM (Maybe (ExportAccum, (LIE GhcRn, Avails)))]]
+                        - [[file:compiler/typecheck/TcRnExports.hs::exports_from_item%20(ExportAccum%20occs%20earlier_mods)][exports_from_item (ExportAccum occs earlier_mods) (dL->L loc ie@(IEModuleContents _ lmod@(dL->L _ mod) lml1n))]]
+                          - [[file:compiler/basicTypes/RdrName.hs::globalRdrEnvElts%20::%20GlobalRdrEnv%20->%20%5BGlobalRdrElt%5D][globalRdrEnvElts :: GlobalRdrEnv -> {GlobalRdrElt}]]
+                            - [[file:compiler/basicTypes/RdrName.hs::data%20GlobalRdrElt][data GlobalRdrElt]] = GRE { gre_name, gre_par, gre_lcl, gre_imp }
+                            - [[file:compiler/basicTypes/RdrName.hs::data%20Parent%20=%20NoParent][data Parent]] = NoParent | ParentIs  par_is::Name | FldParent par_is::Name, par_lbl :: Maybe FieldLabelString
+                          - [[file:compiler/basicTypes/RdrName.hs::pickGREsModExp%20::%20ModuleName%20->%20%5BGlobalRdrElt%5D%20->%20%5B(GlobalRdrElt,GlobalRdrElt)%5D][pickGREsModExp :: ModuleName -> {GlobalRdrElt} -> {(GlobalRdrElt,GlobalRdrElt)}]]
+                          - [[file:compiler/rename/RnEnv.hs::addUsedGREs%20::%20%5BGlobalRdrElt%5D%20->%20RnM%20()][addUsedGREs :: {GlobalRdrElt} -> RnM ()]] -- track references
+                            - updMutVar (tcg_used_gres env) ((filterOut isLocalGRE gres) ++)
+                          - new_exports = map ([[file:compiler/basicTypes/RdrName.hs::availFromGRE%20::%20GlobalRdrElt%20->%20AvailInfo][availFromGRE]] . fst) gre_prs ∷ [AvailInfo]
+                            - data [[file:compiler/basicTypes/Avail.hs::data%20AvailInfo%20=%20Avail%20Name%20--%20^%20An%20ordinary%20identifier%20in%20scope][AvailInfo]] = Avail Name | AvailTC Name [Name] [FieldLabel]
+                          - mods        = [[file:compiler/utils/UniqSet.hs::addOneToUniqSet%20::%20Uniquable%20a%20=>%20UniqSet%20a%20->%20a%20->%20UniqSet%20a][addOneToUniqSet]] earlier_mods mod
+                          - occs' ← [[file:compiler/typecheck/TcRnExports.hs::check_occs%20::%20IE%20GhcPs%20->%20ExportOccMap%20->%20%5BAvailInfo%5D][check_occs :: IE GhcPs -> ExportOccMap -> {AvailInfo} -> RnM ExportOccMap]]
+                            - [[file:compiler/basicTypes/Avail.hs::availsNamesWithOccs%20::%20%5BAvailInfo%5D%20->%20%5B(Name,%20OccName)%5D][availsNamesWithOccs :: {AvailInfo} -> {(Name, OccName)}]]
+                              - [[file:compiler/basicTypes/Avail.hs::availNamesWithOccs%20::%20AvailInfo%20->%20%5B(Name,%20OccName)%5D][availNamesWithOccs :: AvailInfo -> {(Name, OccName)}]]
+                            - lookupOccEnv
+                            - extendOccEnv
+                          - ←-
+                            - ExportAccum (occs' ∷ ExportOccMap) (mods ∷ UniqSet ModuleName)
+                            - IEModuleContents noExt lmod lml1n
+                            - new_exports ∷ [AvailInfo]
+          - [[file:compiler/main/HscMain.hs::extract_renamed_stuff%20::%20ModSummary%20->%20TcGblEnv%20->%20Hsc%20RenamedStuff][extract_renamed_stuff :: ModSummary -> TcGblEnv -> Hsc RenamedStuff]]
+    - [[file:compiler/main/HscMain.hs::genModDetails%20::%20HscEnv%20->%20ModIface%20->%20IO%20ModDetails][genModDetails :: HscEnv -> ModIface -> IO ModDetails]]
+    - [[file:compiler/main/HscMain.hs::finish%20::%20ModSummary][finish :: ModSummary → TcGblEnv → Maybe Fingerprint → Hsc (HscStatus, HomeModInfo)]]
+  - [[file:compiler/main/DriverPipeline.hs::case%20(status,%20hsc_lang)%20of][case]] (status-from-[[file:compiler/main/HscMain.hs::hscIncrementalCompile%20::%20Bool][hscIncrementalCompile]], hsc_lang)
+    - [[file:compiler/main/DriverPipeline.hs::(HscRecomp%20cgguts%20summary,%20_)%20->%20do][(HscRecomp]], ≢ HscInterpreted
+      - [[file:compiler/main/DriverPipeline.hs::runPipeline%20stop_phase%20hsc_env0%20(input_fn,%20mb_phase)][runPipeline]] StopLn
+* interface -> String
+  - [[file:ghc/Main.hs::=%20ShowInterface%20FilePath%20--%20ghc%20--show-iface][ShowInterface FilePath -- ghc --show-iface]]
+    - [[file:ghc/Main.hs::doShowIface%20::%20DynFlags%20->%20FilePath%20->%20IO%20()][doShowIface :: DynFlags -> FilePath -> IO ()]]
+      - [[file:compiler/iface/LoadIface.hs::showIface%20::%20HscEnv%20->%20FilePath%20->%20IO%20()][showIface :: HscEnv -> FilePath -> IO ()]]
+        - readBinIface IgnoreHiWay TraceBinIFaceReading filename
+        - [[file:compiler/iface/LoadIface.hs::pprModIface%20::%20ModIface%20->%20SDoc][pprModIface :: ModIface -> SDoc]]
 * Functions
 *** ModIface
     - [[file:compiler/main/HscTypes.hs::instance%20Binary%20ModIface%20where][compiler/main/HscTypes.hs   instance Binary ModIface where]]

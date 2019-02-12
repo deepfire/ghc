@@ -630,6 +630,8 @@ data Token
   | ITstock
   | ITanyclass
   | ITvia
+  | ITaliases
+  | ITaliases_hiding
 
   -- Backpack tokens
   | ITunit
@@ -2326,6 +2328,7 @@ data ExtBits
   | SafeHaskellBit
   | TraditionalRecordSyntaxBit
   | ExplicitNamespacesBit
+  | StructuredImportsBit
   | LambdaCaseBit
   | BinaryLiteralsBit
   | NegativeLiteralsBit
@@ -2411,6 +2414,7 @@ mkParserFlags' warningFlags extensionFlags thisPackage
       .|. NondecreasingIndentationBit `xoptBit` LangExt.NondecreasingIndentation
       .|. TraditionalRecordSyntaxBit  `xoptBit` LangExt.TraditionalRecordSyntax
       .|. ExplicitNamespacesBit       `xoptBit` LangExt.ExplicitNamespaces
+      .|. StructuredImportsBit        `xoptBit` LangExt.StructuredImports
       .|. LambdaCaseBit               `xoptBit` LangExt.LambdaCase
       .|. BinaryLiteralsBit           `xoptBit` LangExt.BinaryLiterals
       .|. NegativeLiteralsBit         `xoptBit` LangExt.NegativeLiterals
