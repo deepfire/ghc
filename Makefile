@@ -83,9 +83,9 @@ it-so-: Begin.hs Inter.hs Finish.hs
 	./inplace/bin/ghc-stage2 --show-iface Inter.hi
 
 it-so:  Begin.hs Inter.hs Finish.hs
-	cd compiler;  make 2
+	cd compiler;  make 2 -j5
 	rm -f *.{o,hi,*~}
-	./inplace/bin/ghc-stage2 Finish.hs
+	./inplace/bin/ghc-stage2 Finish.hs -v7 -ddump-hi-diffs -ddump-if-trace
 	./inplace/bin/ghc-stage2 --show-iface Inter.hi
 
 # No need to update makefiles for these targets:

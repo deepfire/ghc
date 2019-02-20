@@ -172,7 +172,8 @@ typecheckIface iface
         ; anns      <- tcIfaceAnnotations (mi_anns iface)
 
                 -- Exports
-        ; exports <- ifaceExportNames (mi_exports iface)
+        ; exports    <- ifaceExportNames   (mi_exports iface)
+        ; exports_l1 <- ifaceExportNamesL1 (mi_exports_l1 iface)
 
                 -- Complete Sigs
         ; complete_sigs <- tcIfaceCompleteSigs (mi_complete_sigs iface)
@@ -189,6 +190,7 @@ typecheckIface iface
                               , md_rules     = rules
                               , md_anns      = anns
                               , md_exports   = exports
+                              , md_exports_l1 = exports_l1
                               , md_complete_sigs = complete_sigs
                               }
     }
@@ -387,7 +389,8 @@ typecheckIfacesForMerging mod ifaces tc_env_var =
         fam_insts <- mapM tcIfaceFamInst (mi_fam_insts iface)
         rules     <- tcIfaceRules ignore_prags (mi_rules iface)
         anns      <- tcIfaceAnnotations (mi_anns iface)
-        exports   <- ifaceExportNames (mi_exports iface)
+        exports   <- ifaceExportNames   (mi_exports iface)
+        exportsl1 <- ifaceExportNamesL1 (mi_exports_l1 iface)
         complete_sigs <- tcIfaceCompleteSigs (mi_complete_sigs iface)
         return $ ModDetails { md_types     = type_env
                             , md_insts     = insts
@@ -395,6 +398,7 @@ typecheckIfacesForMerging mod ifaces tc_env_var =
                             , md_rules     = rules
                             , md_anns      = anns
                             , md_exports   = exports
+                            , md_exports_l1 = exportsl1
                             , md_complete_sigs = complete_sigs
                             }
     return (global_type_env, details)
@@ -427,6 +431,7 @@ typecheckIfaceForInstantiate nsubst iface =
     rules     <- tcIfaceRules ignore_prags (mi_rules iface)
     anns      <- tcIfaceAnnotations (mi_anns iface)
     exports   <- ifaceExportNames (mi_exports iface)
+    exportsl1 <- ifaceExportNamesL1 (mi_exports_l1 iface)
     complete_sigs <- tcIfaceCompleteSigs (mi_complete_sigs iface)
     return $ ModDetails { md_types     = type_env
                         , md_insts     = insts
@@ -434,6 +439,7 @@ typecheckIfaceForInstantiate nsubst iface =
                         , md_rules     = rules
                         , md_anns      = anns
                         , md_exports   = exports
+                        , md_exports_l1 = exportsl1
                         , md_complete_sigs = complete_sigs
                         }
 

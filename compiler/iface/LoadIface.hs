@@ -1137,6 +1137,8 @@ pprModIface iface
         , nest 2 (text "where")
         , text "exports:"
         , nest 2 (vcat (map pprExport (mi_exports iface)))
+        , text "L1 exports:"
+        , nest 2 (vcat (map pp_l1_export (mi_exports_l1 iface)))
         , pprDeps (mi_deps iface)
         , vcat (map pprUsage (mi_usages iface))
         , vcat (map pprIfaceAnnotation (mi_anns iface))
@@ -1157,6 +1159,7 @@ pprModIface iface
     pp_hsc_src HsBootFile = text "[boot]"
     pp_hsc_src HsigFile = text "[hsig]"
     pp_hsc_src HsSrcFile = Outputable.empty
+    pp_l1_export (mod, avail) = ppr mod <+> ppr '.' <+> pprExport avail
 
 {-
 When printing export lists, we print like this:

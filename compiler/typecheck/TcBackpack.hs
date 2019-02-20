@@ -696,8 +696,13 @@ mergeSignatures
 
     -- Make sure we didn't refer to anything that doesn't actually exist
     -- pprTrace "mergeSignatures: exports_from_avail" (ppr exports) $ return ()
-    (mb_lies, _) <- exports_from_avail mb_exports rdr_env
-                        (tcg_imports tcg_env) (tcg_semantic_mod tcg_env)
+    (mb_lies_l0l1, _) <- exports_from_avail mb_exports rdr_env
+                             (tcg_imports tcg_env) (tcg_semantic_mod tcg_env)
+    let (mb_lies, mb_lies_l1) = case mb_lies_l0l1 of
+     -- (Maybe [(LIE GhcRn, (Avails, [(ModuleName, AvailInfo)]))], Avails)
+          Nothing -> (,) Nothing Nothing
+          Just lies -> ( Just $ (\(x, (y, _z)) -> (x, y)) <$> lies
+                       , Just $ (\(x, (_y, z)) -> (x, z)) <$> lies)
 
     {- -- NB: This is commented out, because warns above is disabled.
     -- If you tried to explicitly export an identifier that has a warning
@@ -717,7 +722,10 @@ mergeSignatures
     failIfErrsM
 
     -- Save the exports
-    setGblEnv tcg_env { tcg_rn_exports = mb_lies } $ do
+    setGblEnv tcg_env
+      { tcg_rn_exports    = mb_lies
+      , tcg_rn_exports_l1 = mb_lies_l1
+      } $ do
     tcg_env <- getGblEnv
 
     -- STEP 4: Rename the interfaces

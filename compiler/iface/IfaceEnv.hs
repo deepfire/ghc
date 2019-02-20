@@ -14,6 +14,7 @@ module IfaceEnv (
         setNameModule,
 
         ifaceExportNames,
+        ifaceExportNamesL1,
 
         -- Name-cache stuff
         allocateGlobalBinder, updNameCacheTc,
@@ -120,6 +121,9 @@ allocateGlobalBinder name_supply mod occ loc
 
 ifaceExportNames :: [IfaceExport] -> TcRnIf gbl lcl [AvailInfo]
 ifaceExportNames exports = return exports
+
+ifaceExportNamesL1 :: [(ModuleName, IfaceExport)] -> TcRnIf gbl lcl [(ModuleName, AvailInfo)]
+ifaceExportNamesL1 exports = return exports
 
 -- | A function that atomically updates the name cache given a modifier
 -- function.  The second result of the modifier function will be the result

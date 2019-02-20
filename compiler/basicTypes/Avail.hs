@@ -19,6 +19,7 @@ module Avail (
     availsNamesWithOccs,
     availNamesWithOccs,
     stableAvailCmp,
+    stableAvailCmpL1,
     plusAvail,
     trimAvail,
     filterAvail,
@@ -33,6 +34,7 @@ import GhcPrelude
 import Name
 import NameEnv
 import NameSet
+import Module
 
 import FieldLabel
 import Binary
@@ -131,6 +133,19 @@ stableAvailCmp (AvailTC n ns nfs) (AvailTC m ms mfs) =
     (cmpList stableNameCmp ns ms) `thenCmp`
     (cmpList (stableNameCmp `on` flSelector) nfs mfs)
 stableAvailCmp (AvailTC {})       (Avail {})     = GT
+
+stableAvailCmpL1 :: (ModuleName, AvailInfo) -> (ModuleName, AvailInfo) -> Ordering
+stableAvailCmpL1 (m1, Avail n1)         (m2, Avail n2)     =
+    (m1 `stableModuleNameCmp` m2) `thenCmp` (n1 `stableNameCmp` n2)
+stableAvailCmpL1 (m1, Avail {})         (m2, AvailTC {})   =
+    (m1 `stableModuleNameCmp` m2) `thenCmp` LT
+stableAvailCmpL1 (m1, AvailTC n ns nfs) (m2, AvailTC m ms mfs) =
+    (m1 `stableModuleNameCmp` m2) `thenCmp`
+    (n  `stableNameCmp` m)        `thenCmp`
+    (cmpList stableNameCmp ns ms) `thenCmp`
+    (cmpList (stableNameCmp `on` flSelector) nfs mfs)
+stableAvailCmpL1 (m1, AvailTC {})       (m2, Avail {})     =
+    (m1 `stableModuleNameCmp` m2) `thenCmp` GT
 
 avail :: Name -> AvailInfo
 avail n = Avail n

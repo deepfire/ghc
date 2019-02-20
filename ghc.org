@@ -207,15 +207,30 @@
     - [[file:compiler/main/HscTypes.hs::put_%20bh%20exports][put_]] bh exports
     - [[file:compiler/main/HscTypes.hs::exports%20<-%20{-#%20SCC%20"bin_exports"%20#-}%20get%20bh][exports]] <- {-# SCC "bin_exports" #-} get bh
     - [[file:compiler/main/HscTypes.hs::mi_exports%20=%20%5B%5D,][mi_exports]] = [],
+    - [[file:compiler/main/HscTypes.hs::md_exports%20::%20%5BAvailInfo%5D,][md_exports]] ∷ [AvailInfo],
+    - [[file:compiler/main/HscTypes.hs::mg_exports%20::%20!%5BAvailInfo%5D,%20--%20^%20What%20it%20exports][mg_exports]] ∷ [AvailInfo],
   - compiler/iface/MkIface.hs
     - [[file:compiler/iface/MkIface.hs::mi_exports%20=%20mkIfaceExports%20exports,][mi_exports]] = mkIfaceExports exports,
     - export_hash ← computeFingerprint [[file:compiler/iface/MkIface.hs::(mi_exports%20iface0,][(mi_exports]]
+  - compiler/iface/BinIface.hs
+    - [[file:compiler/iface/BinIface.hs::readBinIface_%20dflags%20checkHiWay%20traceBinIFaceReading%20hi_path%20ncu%20=%20do][readBinIface_]]
   - compiler/iface/LoadIface.hs
     - [[file:compiler/iface/LoadIface.hs::,%20nest%202%20(vcat%20(map%20pprExport%20(mi_exports%20iface)))][nest 2 (vcat (map pprExport (mi_exports iface)))]]
+  - compiler/typecheck/TcBackpack.hs
+    - [[file:compiler/typecheck/TcBackpack.hs::(mb_lies,%20_)%20<-%20exports_from_avail%20mb_exports%20rdr_env][(mb_lies, _)]] ← exports_from_avail mb_exports rdr_env 
+                         (tcg_imports tcg_env) (tcg_semantic_mod tcg_env)
+  - compiler/typecheck/TcRnTypes.hs
+    - [[file:compiler/typecheck/TcRnTypes.hs::tcg_exports%20::%20%5BAvailInfo%5D,%20--%20^%20What%20is%20exported][tcg_exports]] ∷ [AvailInfo]
+  - compiler/typecheck/TcRnMonad.hs
+    - [[file:compiler/typecheck/TcRnMonad.hs::tcg_exports%20=%20%5B%5D,][tcg_exports]] = []
+  - compiler/iface/TcIface.hs
+  - compiler/basictypes/Avail.hs
+  - compiler/deSugar/Desugar.hs
+    - [[file:compiler/deSugar/Desugar.hs::mg_exports%20=%20exports,][mg_exports]] = exports
 * Small bird's pipeline
   - [[file:compiler/main/HscMain.hs::hscParse'%20mod_summary][hscParse']] ∷ [[file:compiler/main/HscTypes.hs::data%20HsParsedModule%20=%20HsParsedModule%20{][HsParsedModule]]
   - [[file:compiler/rename/RnNames.hs::rnImportDecl%20::%20Module%20->%20LImportDecl%20GhcPs][rnImportDecl]] ∷ [[file:libraries/ghc-prim/GHC/Types.hs::data%20Module%20=%20Module][Module]] → [[file:compiler/hsSyn/HsImpExp.hs::data%20ImportDecl%20pass][ImportDecl]] GhcPs → [[file:compiler/basicTypes/RdrName.hs::type%20GlobalRdrEnv%20=%20OccEnv%20%5BGlobalRdrElt%5D][GlobalRdrEnv]]
-    - [[file:compiler/iface/LoadIface.hs::loadSrcInterface%20::%20SDoc][loadSrcInterface]] ∷ [[file:compiler/basicTypes/Module.hs::newtype%20ModuleName%20=%20ModuleName%20FastString][ModuleName]] → RnM [[file:compiler/main/HscTypes.hs::data%20ModIface][ModIface]]
+    - [[file:compiler/iface/LoadIface.hs::loadSrcInterface%20::%20SDoc][loadSrcI$nterface]] ∷ [[file:compiler/basicTypes/Module.hs::newtype%20ModuleName%20=%20ModuleName%20FastString][ModuleName]] → RnM [[file:compiler/main/HscTypes.hs::data%20ModIface][ModIface]]
       - [[file:compiler/main/HscTypes.hs::mi_exports%20::%20!%5BIfaceExport%5D,][mi_exports]]
       - [[file:compiler/iface/BinIface.hs::readBinIface_%20dflags%20checkHiWay%20traceBinIFaceReading%20hi_path%20ncu%20=%20do][readBinIface_]] ∷ FilePath → TcRnIf a b [[file:compiler/main/HscTypes.hs::data%20ModIface][ModIface]]
     - [[file:compiler/rename/RnNames.hs::filterImports%20iface%20decl_spec%20(Just%20(want_hiding,%20L%20l%20import_items))%20(_)][filterImports]] ∷ [[file:compiler/main/HscTypes.hs::data%20ModIface][ModIface]] → [[[file:compiler/hsSyn/HsImpExp.hs::data%20IE%20pass][IE]] GhcPs] → ([[[file:compiler/hsSyn/HsImpExp.hs::data%20IE%20pass][IE]] GhcRn], [[[file:compiler/basicTypes/RdrName.hs::data%20GlobalRdrElt][GlobalRdrElt]]])
@@ -233,8 +248,10 @@
           - [[file:compiler/basicTypes/RdrName.hs::pickQualGRE%20mod%20gre@(GRE%20{%20gre_name%20=%20n,%20gre_lcl%20=%20lcl,%20gre_imp%20=%20iss%20})][pickQualGRE]] ∷ [[file:compiler/basicTypes/Module.hs::newtype%20ModuleName%20=%20ModuleName%20FastString][ModuleName]] → [[file:compiler/basicTypes/RdrName.hs::data%20GlobalRdrElt][GlobalRdrElt]] → Maybe [[file:compiler/basicTypes/RdrName.hs::data%20GlobalRdrElt][GlobalRdrElt]]
         - [[file:compiler/basicTypes/RdrName.hs::lookupLocalRdrEnv%20(LRE%20{%20lre_env%20=%20env,%20lre_in_scope%20=%20ns%20})%20rdr][lookupLocalRdrEnv]] ∷ [[file:compiler/basicTypes/RdrName.hs::data%20LocalRdrEnv%20=%20LRE%20{%20lre_env%20::%20OccEnv%20Name][LocalRdrEnv]]  → [[file:compiler/basicTypes/RdrName.hs::data%20RdrName][RdrName]] → Maybe [[file:compiler/basicTypes/Name.hs::data%20Name%20=%20Name%20{][Name]]
   - [[file:compiler/typecheck/TcRnExports.hs::tcRnExports%20::%20Bool%20--%20False%20=>%20no%20'module%20M(..)%20where'%20header%20at%20all][tcRnExports]] ∷ [[[file:compiler/hsSyn/HsImpExp.hs::data%20IE%20pass][IE]]] → [[file:compiler/typecheck/TcRnTypes.hs::data%20TcGblEnv][TcGblEnv]] → [[file:compiler/typecheck/TcRnTypes.hs::data%20TcGblEnv][TcGblEnv]]
-    - [[file:compiler/typecheck/TcRnExports.hs::exports_from_avail%20::%20Maybe%20(Located%20%5BLIE%20GhcPs%5D)][exports_from_avail]] ∷ [[[file:compiler/hsSyn/HsImpExp.hs::data%20IE%20pass][IE]]] → [[file:compiler/basicTypes/RdrName.hs::type%20GlobalRdrEnv%20=%20OccEnv%20%5BGlobalRdrElt%5D][GlobalRdrEnv]] → [[file:compiler/typecheck/TcRnTypes.hs::data%20ImportAvails][ImportAvails]] → [[[file:compiler/basicTypes/Avail.hs::data%20AvailInfo%20=%20Avail%20Name%20--%20^%20An%20ordinary%20identifier%20in%20scope][AvailInfo]]]
-      - [[file:compiler/typecheck/TcRnExports.hs::exports_from_item%20(ExportAccum%20occs%20earlier_mods)][exports_from_item]] ∷ ExportAccum -> [[file:compiler/hsSyn/HsImpExp.hs::data%20IE%20pass][IE]] GhcPs → (ExportAccum, ([[file:compiler/hsSyn/HsImpExp.hs::data%20IE%20pass][IE]] GhcRn, [[[file:compiler/basicTypes/Avail.hs::data%20AvailInfo%20=%20Avail%20Name%20--%20^%20An%20ordinary%20identifier%20in%20scope][AvailInfo]]]))
+    - 
+      - [[file:compiler/typecheck/TcRnExports.hs::exports_from_avail%20::%20Maybe%20(Located%20%5BLIE%20GhcPs%5D)][exports_from_avail]] ∷ [[[file:compiler/hsSyn/HsImpExp.hs::data%20IE%20pass][IE]]] → [[file:compiler/basicTypes/RdrName.hs::type%20GlobalRdrEnv%20=%20OccEnv%20%5BGlobalRdrElt%5D][GlobalRdrEnv]] → [[file:compiler/typecheck/TcRnTypes.hs::data%20ImportAvails][ImportAvails]] → [[[file:compiler/basicTypes/Avail.hs::data%20AvailInfo%20=%20Avail%20Name%20--%20^%20An%20ordinary%20identifier%20in%20scope][AvailInfo]]]
+        - [[file:compiler/typecheck/TcRnExports.hs::accumExports%20::%20(ExportAccum%20->%20x%20->%20TcRn%20(Maybe%20(ExportAccum,%20y)))][accumExports]]
+        - [[file:compiler/typecheck/TcRnExports.hs::exports_from_item%20(ExportAccum%20occs%20earlier_mods)][exports_from_item]] ∷ ExportAccum -> [[file:compiler/hsSyn/HsImpExp.hs::data%20IE%20pass][IE]] GhcPs → (ExportAccum, ([[file:compiler/hsSyn/HsImpExp.hs::data%20IE%20pass][IE]] GhcRn, [[[file:compiler/basicTypes/Avail.hs::data%20AvailInfo%20=%20Avail%20Name%20--%20^%20An%20ordinary%20identifier%20in%20scope][AvailInfo]]]))
   - id ([[file:compiler/main/HscMain.hs::hscSimplify'%20plugins%20ds_result%20=%20do][hscSimplify']] ∘ [[file:compiler/main/HscMain.hs::hscDesugar'%20mod_location%20tc_result%20=%20do][hscDesugar']])
   - [[file:compiler/iface/MkIface.hs::mkIface_%20::%20HscEnv%20->%20Maybe%20Fingerprint%20->%20Module%20->%20HscSource][mkIface_]] ([[file:compiler/iface/MkIface.hs::mkIfaceExports%20::%20%5BAvailInfo%5D%20->%20%5BIfaceExport%5D%20--%20Sort%20to%20make%20canonical][mkIfaceExports]]) ∷ [[[file:compiler/basicTypes/Avail.hs::data%20AvailInfo%20=%20Avail%20Name%20--%20^%20An%20ordinary%20identifier%20in%20scope][AvailInfo]]] → [[[file:compiler/main/HscTypes.hs::type%20IfaceExport%20=%20AvailInfo][IfaceExport]]] → [[file:compiler/main/HscTypes.hs::data%20ModIface][ModIface]]
     - [[file:compiler/main/HscTypes.hs::mi_exports%20::%20!%5BIfaceExport%5D,][mi_exports]]

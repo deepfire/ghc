@@ -879,6 +879,9 @@ data ModIface
                 -- Records the modules that are the declaration points for things
                 -- exported by this module, and the 'OccName's of those things
 
+        mi_exports_l1  :: ![(ModuleName, IfaceExport)],
+                -- ^ L1 exports, StructuredImports
+
         mi_exp_hash :: !Fingerprint,
                 -- ^ Hash of export list
 
@@ -1029,6 +1032,7 @@ instance Binary ModIface where
                  mi_deps      = deps,
                  mi_usages    = usages,
                  mi_exports   = exports,
+                 mi_exports_l1 = exports_l1,
                  mi_exp_hash  = exp_hash,
                  mi_used_th   = used_th,
                  mi_fixities  = fixities,
@@ -1060,6 +1064,7 @@ instance Binary ModIface where
         lazyPut bh deps
         lazyPut bh usages
         put_ bh exports
+        put_ bh exports_l1
         put_ bh exp_hash
         put_ bh used_th
         put_ bh fixities
@@ -1093,6 +1098,7 @@ instance Binary ModIface where
         deps        <- lazyGet bh
         usages      <- {-# SCC "bin_usages" #-} lazyGet bh
         exports     <- {-# SCC "bin_exports" #-} get bh
+        exports_l1  <- {-# SCC "bin_exports_l1" #-} get bh
         exp_hash    <- get bh
         used_th     <- get bh
         fixities    <- {-# SCC "bin_fixities" #-} get bh
@@ -1125,6 +1131,7 @@ instance Binary ModIface where
                  mi_deps        = deps,
                  mi_usages      = usages,
                  mi_exports     = exports,
+                 mi_exports_l1  = exports_l1,
                  mi_exp_hash    = exp_hash,
                  mi_used_th     = used_th,
                  mi_anns        = anns,
@@ -1168,6 +1175,7 @@ emptyModIface mod
                mi_deps        = noDependencies,
                mi_usages      = [],
                mi_exports     = [],
+               mi_exports_l1  = [],
                mi_exp_hash    = fingerprint0,
                mi_used_th     = False,
                mi_fixities    = [],
@@ -1213,6 +1221,7 @@ data ModDetails
   = ModDetails {
         -- The next two fields are created by the typechecker
         md_exports   :: [AvailInfo],
+        md_exports_l1 :: ![(ModuleName, AvailInfo)],
         md_types     :: !TypeEnv,       -- ^ Local type environment for this particular module
                                         -- Includes Ids, TyCons, PatSyns
         md_insts     :: ![ClsInst],     -- ^ 'DFunId's for the instances in this module
@@ -1229,6 +1238,7 @@ emptyModDetails :: ModDetails
 emptyModDetails
   = ModDetails { md_types     = emptyTypeEnv,
                  md_exports   = [],
+                 md_exports_l1 = [],
                  md_insts     = [],
                  md_rules     = [],
                  md_fam_insts = [],
@@ -1272,6 +1282,7 @@ data ModGuts
         mg_hsc_src   :: HscSource,       -- ^ Whether it's an hs-boot module
         mg_loc       :: SrcSpan,         -- ^ For error messages from inner passes
         mg_exports   :: ![AvailInfo],    -- ^ What it exports
+        mg_exports_l1 :: ![(ModuleName, AvailInfo)], -- ^ ..on level 1
         mg_deps      :: !Dependencies,   -- ^ What it depends on, directly or
                                          -- otherwise
         mg_usages    :: ![Usage],        -- ^ What was used?  Used for interfaces.

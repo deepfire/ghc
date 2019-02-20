@@ -277,12 +277,19 @@ initTc hsc_env hsc_src keep_rn_syntax mod loc do_this
                 tcg_th_top_level_locs
                                    = th_locs_var,
                 tcg_exports        = [],
+                tcg_exports_l1     = [],
                 tcg_imports        = emptyImportAvails,
-                tcg_used_gres     = used_gre_var,
+                tcg_used_gres      = used_gre_var,
                 tcg_dus            = emptyDUs,
 
                 tcg_rn_imports     = [],
                 tcg_rn_exports     =
+                    if hsc_src == HsigFile
+                        -- Always retain renamed syntax, so that we can give
+                        -- better errors.  (TODO: how?)
+                        then Just []
+                        else maybe_rn_syntax [],
+                tcg_rn_exports_l1  =
                     if hsc_src == HsigFile
                         -- Always retain renamed syntax, so that we can give
                         -- better errors.  (TODO: how?)
