@@ -24,7 +24,8 @@ module Avail (
     trimAvail,
     filterAvail,
     filterAvails,
-    nubAvails
+    nubAvails,
+    nubAvailsL1
 
 
   ) where
@@ -40,6 +41,7 @@ import FieldLabel
 import Binary
 import ListSetOps
 import Outputable
+import UniqFM
 import Util
 
 import Data.Data ( Data )
@@ -267,6 +269,22 @@ nubAvails :: [AvailInfo] -> [AvailInfo]
 nubAvails avails = nameEnvElts (foldl' add emptyNameEnv avails)
   where
     add env avail = extendNameEnv_C plusAvail env (availName avail) avail
+
+nubAvailsL1 :: [(ModuleName, AvailInfo)] -> [(ModuleName, AvailInfo)]
+nubAvailsL1 l1_avails = concat $ eltsUFM <$> eltsUFM l1Map
+  where
+    l1Map              :: ModuleNameEnv (NameEnv (ModuleName, AvailInfo))
+    l1Map              = foldl' addL1 emptyUFM l1_avails
+    add   env modAvail = extendNameEnv_C plusAvail' env (availName (snd modAvail)) modAvail
+    plusAvail' :: (ModuleName, AvailInfo) -> (ModuleName, AvailInfo) -> (ModuleName, AvailInfo)
+    plusAvail' (m, al) (_, ar) = (m, plusAvail al ar)
+    addAvail :: (ModuleName, AvailInfo)
+             -> NameEnv (ModuleName, AvailInfo)
+    addAvail  modAvail = unitUFM (availName (snd modAvail)) modAvail
+    addL1    :: ModuleNameEnv (NameEnv (ModuleName, AvailInfo))
+             -> (ModuleName, AvailInfo)
+             -> ModuleNameEnv (NameEnv (ModuleName, AvailInfo))
+    addL1 env modAvail@(mod, _) = addToUFM_Acc (flip add) addAvail env mod modAvail
 
 -- -----------------------------------------------------------------------------
 -- Printing

@@ -1,5 +1,6 @@
 module Inter
-  (
+  ( module Begin aliases
   )
 where
-import Begin
+
+import Begin aliases

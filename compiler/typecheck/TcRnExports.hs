@@ -153,7 +153,7 @@ tcRnExports explicit_mod exports
                         --       turns out to be out of scope
 
         ; let do_it = exports_from_avail real_exports rdr_env imports this_mod
-        ; (rn_exports, final_avails)
+        ; (rn_exports, (final_avails, final_avails_l1))
             <- if hsc_src == HsigFile
                 then do (msgs, mb_r) <- tryTc do_it
                         case mb_r of
@@ -166,6 +166,7 @@ tcRnExports explicit_mod exports
 
         ; let new_tcg_env =
                   tcg_env { tcg_exports    = final_avails,
+                            tcg_exports_l1 = final_avails_l1,
                              tcg_rn_exports = case tcg_rn_exports tcg_env of
                                                 Nothing -> Nothing
                                                 Just _  ->
@@ -186,7 +187,8 @@ exports_from_avail :: Maybe (Located [LIE GhcPs])
                          -- 'module Foo' export is valid (it's not valid
                          -- if we didn't import Foo!)
                    -> Module
-                   -> RnM (Maybe [(LIE GhcRn, (Avails, [(ModuleName, AvailInfo)]))], Avails)
+                   -> RnM ( Maybe [(LIE GhcRn, (Avails, [(ModuleName, AvailInfo)]))]
+                          ,                    (Avails, [(ModuleName, AvailInfo)]))
                          -- (Nothing, _) <=> no explicit export list
                          -- if explicit export list is present it contains
                          -- each renamed export item together with its exported
@@ -204,7 +206,7 @@ exports_from_avail Nothing rdr_env _imports _this_mod
     ; let avails =
             map fix_faminst . gresToAvailInfo
               . filter isLocalGRE . globalRdrEnvElts $ rdr_env
-    ; return (Nothing, avails) }
+    ; return (Nothing, (avails, [])) } -- XXX !!!
   where
     -- #11164: when we define a data instance
     -- but not data family, re-export the family
@@ -223,8 +225,9 @@ exports_from_avail Nothing rdr_env _imports _this_mod
 
 exports_from_avail (Just (dL->L _ rdr_items)) rdr_env imports this_mod
   = do ie_avails <- accumExports do_litem rdr_items
-       let final_exports = nubAvails (concat (map (fst . snd) ie_avails)) -- Combine families
-       return (Just ie_avails, (final_exports))
+       let final_exports    = nubAvails   (concat (map (fst . snd) ie_avails)) -- Combine families
+           final_exports_l1 = nubAvailsL1 (concat (map (snd . snd) ie_avails)) 
+       return (Just ie_avails, (final_exports, final_exports_l1))
   where
     do_litem :: ExportAccum -> LIE GhcPs
              -> RnM (Maybe (ExportAccum, (LIE GhcRn, (Avails, [(ModuleName, AvailInfo)]))))

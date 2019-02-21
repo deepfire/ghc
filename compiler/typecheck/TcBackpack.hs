@@ -639,7 +639,7 @@ mergeSignatures
                                     emptyImportAvails
                                     (tcg_semantic_mod tcg_env)
                         case mb_r of
-                            Just (_, as2) -> return (thinModIface as2 ireq_iface, as2)
+                            Just (_, (as2, _)) -> return (thinModIface as2 ireq_iface, as2) -- XXX !!!
                             Nothing -> addMessages msgs >> failM
                     -- We can't think signatures from non signature packages
                     _ -> return (ireq_iface, as1)

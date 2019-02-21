@@ -65,8 +65,10 @@ data ImportDecl pass
       ideclAs        :: Maybe (Located ModuleName),  -- ^ as Module
       ideclHiding    :: Maybe (Bool, Located [LIE pass]),
                                        -- ^ (True => hiding, names)
-      ideclAliases   :: Maybe (Bool, Located [LIE pass])
-                                       -- ^ (True => aliases_hiding, names)
+      ideclAliases   :: Maybe (Bool, Located (Maybe [LIE pass]))
+                               -- ^ (True => aliases_hiding, names)
+                                     -- ^ (Just [] => aliases ()) -- import no L1 names
+                                     -- ^ (Nothing => aliases)    -- import all L1 names
     }
   | XImportDecl (XXImportDecl pass)
      -- ^
@@ -143,8 +145,10 @@ instance (p ~ GhcPass pass,OutputableBndrId p)
         pp_spec (Just (True, (L _ ies))) = text "hiding" <+> ppr_ies ies
 
         pp_aliases Nothing             = empty
-        pp_aliases (Just (False, (L _ ies))) = text "aliases"        <+> ppr_ies ies
-        pp_aliases (Just (True,  (L _ ies))) = text "aliases_hiding" <+> ppr_ies ies
+        pp_aliases (Just (False, (L _ Nothing)))    = text "aliases"
+        pp_aliases (Just (False, (L _ (Just ies)))) = text "aliases"        <+> ppr_ies ies
+        pp_aliases (Just (True,  (L _ (Just ies)))) = text "aliases_hiding" <+> ppr_ies ies
+        pp_aliases (Just (True,  (L _ Nothing)))    = text "__impossible_aliases_AST__"
 
         ppr_ies []  = text "()"
         ppr_ies ies = char '(' <+> interpp'SP ies <+> char ')'

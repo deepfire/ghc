@@ -4,7 +4,7 @@
 \section[RnNames]{Extracting imported and top-level names in scope}
 -}
 
-{-# LANGUAGE CPP, NondecreasingIndentation, MultiWayIf, NamedFieldPuns #-}
+{-# LANGUAGE CPP, NondecreasingIndentation, MultiWayIf, NamedFieldPuns, ViewPatterns #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -270,7 +270,7 @@ rnImportDecl this_mod
                                      , ideclQualified = qual_only, ideclImplicit = implicit
                                      , ideclAs = as_mod
                                      , ideclHiding = imp_details
-                                     , ideclAliases = imp_details_als }))
+                                     , ideclAliases = imp_details_l1 }))
   = setSrcSpan loc $ do
 
     when (isJust mb_pkg) $ do
@@ -314,6 +314,10 @@ rnImportDecl this_mod
                            addWarn (Reason Opt_WarnMissingImportList)
                                    (missingImportListWarn imp_mod_name)
     -- XXX XStructuredImports: maybe honor missingImportListWarn for level-1's
+    case imp_details_l1 of
+        Just (True, unLoc -> Nothing) -> 
+          (addErr (text "An aliases_hiding import entry must specify omissions: " <+> ppr imp_mod_name))
+        _ -> return ()
 
     iface <- loadSrcInterface doc imp_mod_name want_boot (fmap sl_fs mb_pkg)
 
@@ -343,8 +347,8 @@ rnImportDecl this_mod
                                   is_dloc = loc, is_as = qual_mod_name }
 
     -- filter the imports according to the import declaration
-    ((new_imp_details, new_imp_details_als)
-     , gres) <- filterImports iface imp_spec imp_details imp_details_als
+    ((new_imp_details, new_imp_details_l1)
+     , gres) <- filterImports iface imp_spec imp_details imp_details_l1
     -- XXX XStructuredImports: filterImports the level-1's
 
     -- for certain error messages, we’d like to know what could be imported
@@ -353,8 +357,12 @@ rnImportDecl this_mod
 
     let gbl_env = mkGlobalRdrEnv gres
 
-        is_hiding | Just (True,_) <- imp_details = True
-                  | otherwise                    = False
+        is_hiding    | Just (True,_) <- imp_details    = True
+                     | Just (True,_) <- imp_details_l1 = True
+                     | otherwise                       = False
+
+        is_level1    | Just _        <- imp_details_l1 = True
+                     | otherwise                       = False
 
         -- should the import be safe?
         mod_safe' = mod_safe
@@ -366,6 +374,7 @@ rnImportDecl this_mod
             , imv_span        = loc
             , imv_is_safe     = mod_safe'
             , imv_is_hiding   = is_hiding
+            , imv_is_level1   = is_level1
             , imv_all_exports = potential_gres
             , imv_qualified   = qual_only
             }
@@ -381,7 +390,7 @@ rnImportDecl this_mod
 
     let new_imp_decl = L loc (decl { ideclExt = noExt, ideclSafe = mod_safe'
                                    , ideclHiding  = new_imp_details
-                                   , ideclAliases = new_imp_details_als })
+                                   , ideclAliases = new_imp_details_l1 })
 
     return (new_imp_decl, gbl_env, imports, mi_hpc iface)
 rnImportDecl _ (L _ (XImportDecl _)) = panic "rnImportDecl"
@@ -852,12 +861,12 @@ although we never look up data constructors.
 
 filterImports
     :: ModIface
-    -> ImpDeclSpec                     -- The span for the entire import decl
-    -> Maybe (Bool, Located [LIE GhcPs])    -- Import spec; True => hiding
-    -> Maybe (Bool, Located [LIE GhcPs])    -- Aliases import spec; True => aliases_hiding
+    -> ImpDeclSpec                               -- The span for the entire import decl
+    -> Maybe (Bool, Located [LIE GhcPs])         -- Import spec; True => hiding
+    -> Maybe (Bool, Located (Maybe [LIE GhcPs])) -- Aliases import spec; True => aliases_hiding
     -> RnM ((Maybe (Bool, Located [LIE GhcRn]),  -- Import spec w/ Names
-             Maybe (Bool, Located [LIE GhcRn])), -- Aliases import spec w/ Names
-            [GlobalRdrElt])                   -- Same again, but in GRE form
+             Maybe (Bool, Located (Maybe [LIE GhcRn]))), -- Aliases import spec w/ Names
+            [GlobalRdrElt])                      -- Same again, but in GRE form
 filterImports iface decl_spec Nothing _
   = return ((Nothing, Nothing), gresFromAvails (Just imp_spec) (mi_exports iface))
   where

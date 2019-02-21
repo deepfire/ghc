@@ -89,7 +89,7 @@ import Util             ( looksLikePackageName, fstOf3, sndOf3, thdOf3 )
 import GhcPrelude
 }
 
-%expect 237 -- shift/reduce conflicts
+%expect 245 -- shift/reduce conflicts
 
 {- Last updated: 04 June 2018
 
@@ -877,7 +877,8 @@ exp_doc :: { OrdList (LIE GhcPs) }
 export  :: { OrdList (LIE GhcPs) }
         : qcname_ext export_subspec  {% mkModuleImpExp $1 (snd $ unLoc $2)
                                           >>= \ie -> amsu (sLL $1 $> ie) (fst $ unLoc $2) }
-        |  'module' modid maybeexpas {% amsu (sLL $1 $> (IEModuleContents noExt $2 (sequence $3)))
+        |  'module' modid maybeexpas maybeexpaliases -- XXX: maybeexpaliases ignored !!!
+                                     {% amsu (sLL $1 $> (IEModuleContents noExt $2 (sequence $3)))
                                              [mj AnnModule $1] }
         |  'pattern' qcon            {% amsu (sLL $1 $> (IEVar noExt (sLL $1 $> (IEPattern $2))))
                                              [mj AnnPattern $1] }
@@ -1013,20 +1014,26 @@ impspec :: { Located (Bool, Located [LIE GhcPs]) }
                                                       sLL $1 $> $ fromOL $3))
                                                [mj AnnHiding $1,mop $2,mcp $4] }
 
-maybealiases :: { Located (Maybe (Bool, Located [LIE GhcPs])) }
-        : aliasesspec              {% let (b, ie) = unLoc $1 in
-                                       checkImportSpec ie
-                                        >>= \checkedIe ->
-                                          return (cL (gl $1) (Just (b, checkedIe)))  }
+maybealiases :: { Located (Maybe (Bool, Located (Maybe [LIE GhcPs]))) }
+        : aliasesspec              {% let (b, mie) = unLoc $1 in
+                                      case unLoc mie of
+                                        Nothing -> return (cL (gl $1) (Just (b, noLoc Nothing)))
+                                        Just ie ->
+                                          checkImportSpec (sL1 $1 ie)
+                                            >>= \checkedIe ->
+                                              return (cL (gl $1) (Just (b, cL (gl checkedIe) $ Just (unLoc checkedIe))))  }
         | {- empty -}              { noLoc Nothing }
 
-aliasesspec :: { Located (Bool, Located [LIE GhcPs]) }
-        :  'aliases'        '(' exportlist ')' {% ams (sLL $1 $> (False,
-                                                      sLL $1 $> $ fromOL $3))
+aliasesspec :: { Located (Bool, Located (Maybe [LIE GhcPs])) }
+        :  'aliases'                           {% ams (sLL $1 $> (False,
+                                                      sLL $1 $> $ Nothing))
+                                                   [] }
+        |  'aliases'        '(' exportlist ')' {% ams (sLL $1 $> (False,
+                                                      sLL $1 $> $ Just (fromOL $3)))
                                                    [mop $2,mcp $4] }
         |  'aliases_hiding' '(' exportlist ')' {% ams (sLL $1 $> (True,
-                                                      sLL $1 $> $ fromOL $3))
-                                               [mj AnnAliasesHiding $1,mop $2,mcp $4] }
+                                                      sLL $1 $> $ Just (fromOL $3)))
+                                                   [mj AnnAliasesHiding $1,mop $2,mcp $4] }
 
 -----------------------------------------------------------------------------
 -- Fixity Declarations
