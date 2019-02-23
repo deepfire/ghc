@@ -842,6 +842,9 @@ reservedWordsFM = listToUFM $
          ( "dynamic",        ITdynamic,       xbit FfiBit),
          ( "safe",           ITsafe,          xbit FfiBit .|.
                                               xbit SafeHaskellBit),
+         ( "aliases",        ITaliases,       xbit StructuredImportsBit),
+         ( "aliases_hiding", ITaliases_hiding, xbit StructuredImportsBit),
+
          ( "interruptible",  ITinterruptible, xbit InterruptibleFfiBit),
          ( "unsafe",         ITunsafe,        xbit FfiBit),
          ( "stdcall",        ITstdcallconv,   xbit FfiBit),

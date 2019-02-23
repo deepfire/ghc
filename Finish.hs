@@ -2,4 +2,4 @@ module Finish
   (
   )
 where
-import Inter
+import Inter aliases

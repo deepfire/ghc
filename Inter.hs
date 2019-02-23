@@ -3,4 +3,4 @@ module Inter
   )
 where
 
-import Begin aliases
+import Begin aliases ()

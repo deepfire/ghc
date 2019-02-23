@@ -893,6 +893,10 @@ maybeexpas :: { Located (Maybe ModuleName) }
         : 'as' modid              { sLL $1 $> (Just (unLoc $2)) }
         | {- empty -}             { noLoc Nothing }
 
+maybeexpaliases :: { Located Bool }
+        : 'aliases'               { sLL $1 $> True }
+        | {- empty -}             { noLoc False }
+
 qcnames :: { ([AddAnn], [Located ImpExpQcSpec]) }
   : {- empty -}                   { ([],[]) }
   | qcnames1                      { $1 }
@@ -3494,6 +3498,8 @@ special_id
         | 'unit'                { sL1 $1 (fsLit "unit") }
         | 'dependency'          { sL1 $1 (fsLit "dependency") }
         | 'signature'           { sL1 $1 (fsLit "signature") }
+        | 'aliases'             { sL1 $1 (fsLit "aliases") }
+        | 'aliases_hiding'      { sL1 $1 (fsLit "aliases_hiding") }
 
 special_sym :: { Located FastString }
 special_sym : '!'       {% ams (sL1 $1 (fsLit "!")) [mj AnnBang $1] }
