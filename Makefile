@@ -77,9 +77,24 @@ default : all
 help:
 	@cat MAKEHELP.md
 
+XFLAGSis := -XStructuredImports
+DFLAGSis := # -ddump-rn-trace # -ddump-hi-diffs -ddump-if-trace
+it-so:  Begin.hs Inter.hs Finish.hs
+	cd compiler;  make 2 -j5
+	rm -f *.{o,hi,*~}
+	./inplace/bin/ghc-stage2 Finish.hs ${XFLAGSis} ${DFLAGSis}
+
+s1 show-1:
+	./inplace/bin/ghc-stage2 --show-iface Begin.hi
+s2 show-2:
+	./inplace/bin/ghc-stage2 --show-iface Inter.hi
+s3 show-3:
+	./inplace/bin/ghc-stage2 --show-iface Finish.hi
+
 # No need to update makefiles for these targets:
 # (the ones we're filtering out)
 REALGOALS=$(filter-out \
+    it-so it-so- show-1 show-2 show-3 s1 s2 s3 \
     binary-dist \
     binary-dist-prep \
     install-strip \
