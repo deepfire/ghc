@@ -19,6 +19,7 @@
      (False)
      (False)
      (Nothing)
+     (Nothing)
      (Nothing)))]
   [({ KindSigs.hs:11:1-17 }
     (TyClD

@@ -262,7 +262,9 @@ loadSrcInterface :: SDoc
                  -> RnM ModIface
 
 loadSrcInterface doc mod want_boot maybe_pkg
-  = do { res <- loadSrcInterface_maybe doc mod want_boot maybe_pkg
+  = do { traceRn "About to loadSrcInterface_maybe" (ppr "")
+       ; res <- loadSrcInterface_maybe doc mod want_boot maybe_pkg
+       ; traceRn "Done loadSrcInterface_maybe" (ppr "")
        ; case res of
            Failed err      -> failWithTc err
            Succeeded iface -> return iface }
@@ -283,7 +285,14 @@ loadSrcInterface_maybe doc mod want_boot maybe_pkg
   = do { hsc_env <- getTopEnv
        ; res <- liftIO $ findImportedModule hsc_env mod maybe_pkg
        ; case res of
-           Found _ mod -> initIfaceTcRn $ loadInterface doc mod (ImportByUser want_boot)
+           Found _ mod -> do
+             traceRn "About to loadInterface" (ppr "")
+             r <- initIfaceTcRn $ do
+               rs <- loadInterface doc mod (ImportByUser want_boot)
+               traceIf (text "Done loadInterface, about to initIfaceTcRn")
+               return rs
+             traceRn "Done initIfaceTcRn" (ppr "")
+             return r
            -- TODO: Make sure this error message is good
            err         -> return (Failed (cannotFindModule (hsc_dflags hsc_env) mod err)) }
 
@@ -982,8 +991,10 @@ readIface :: Module -> FilePath
         -- Succeeded iface <=> successfully found and parsed
 
 readIface wanted_mod file_path
-  = do  { res <- tryMostM $
+  = do  { traceIf (text "About to readBinIface")
+        ; res <- tryMostM $
                  readBinIface CheckHiWay QuietBinIFaceReading file_path
+        ; traceIf (text "Done readBinIface")
         ; dflags <- getDynFlags
         ; case res of
             Right iface
@@ -1137,6 +1148,8 @@ pprModIface iface
         , nest 2 (text "where")
         , text "exports:"
         , nest 2 (vcat (map pprExport (mi_exports iface)))
+        , text "L1 exports:"
+        , nest 2 (vcat (map pp_l1_export (mi_exports_l1 iface)))
         , pprDeps (mi_deps iface)
         , vcat (map pprUsage (mi_usages iface))
         , vcat (map pprIfaceAnnotation (mi_anns iface))
@@ -1157,6 +1170,7 @@ pprModIface iface
     pp_hsc_src HsBootFile = text "[boot]"
     pp_hsc_src HsigFile = text "[hsig]"
     pp_hsc_src HsSrcFile = Outputable.empty
+    pp_l1_export (mod, avail) = ppr mod <+> ppr '.' <+> pprExport avail
 
 {-
 When printing export lists, we print like this:

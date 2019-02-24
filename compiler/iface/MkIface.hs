@@ -240,6 +240,7 @@ mkIface_ hsc_env maybe_old_fingerprint
                       md_anns      = anns,
                       md_types     = type_env,
                       md_exports   = exports,
+                      md_exports_l1 = exports_l1,
                       md_complete_sigs = complete_sigs }
 -- NB:  notice that mkIface does not look at the bindings
 --      only at the TypeEnv.  The previous Tidy phase has
@@ -286,7 +287,8 @@ mkIface_ hsc_env maybe_old_fingerprint
               mi_hsc_src     = hsc_src,
               mi_deps        = deps,
               mi_usages      = usages,
-              mi_exports     = mkIfaceExports exports,
+              mi_exports     = mkIfaceExports   exports,
+              mi_exports_l1  = mkIfaceExportsL1 exports_l1,
 
               -- Sort these lexicographically, so that
               -- the result is stable across compilations
@@ -639,6 +641,7 @@ addFingerprints hsc_env mb_old_fingerprint iface0 new_decls
    -- the Names it mentions, only the Names themselves, hence putNameLiterally.
    export_hash <- computeFingerprint putNameLiterally
                       (mi_exports iface0,
+                       mi_exports_l1 iface0,
                        orphan_hash,
                        dep_orphan_hashes,
                        dep_pkgs (mi_deps iface0),
@@ -1105,6 +1108,20 @@ mkIfaceAnnotation (Annotation { ann_target = target, ann_value = payload })
 mkIfaceExports :: [AvailInfo] -> [IfaceExport]  -- Sort to make canonical
 mkIfaceExports exports
   = sortBy stableAvailCmp (map sort_subs exports)
+  where
+    sort_subs :: AvailInfo -> AvailInfo
+    sort_subs (Avail n) = Avail n
+    sort_subs (AvailTC n [] fs) = AvailTC n [] (sort_flds fs)
+    sort_subs (AvailTC n (m:ms) fs)
+       | n==m      = AvailTC n (m:sortBy stableNameCmp ms) (sort_flds fs)
+       | otherwise = AvailTC n (sortBy stableNameCmp (m:ms)) (sort_flds fs)
+       -- Maintain the AvailTC Invariant
+
+    sort_flds = sortBy (stableNameCmp `on` flSelector)
+
+mkIfaceExportsL1 :: [(ModuleName, AvailInfo)] -> [(ModuleName, IfaceExport)]
+mkIfaceExportsL1 exports
+  = sortBy stableAvailCmpL1 (map (sort_subs <$>) exports)
   where
     sort_subs :: AvailInfo -> AvailInfo
     sort_subs (Avail n) = Avail n

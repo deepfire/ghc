@@ -630,6 +630,8 @@ data Token
   | ITstock
   | ITanyclass
   | ITvia
+  | ITaliases
+  | ITaliases_hiding
 
   -- Backpack tokens
   | ITunit
@@ -838,6 +840,9 @@ reservedWordsFM = listToUFM $
          ( "dynamic",        ITdynamic,       xbit FfiBit),
          ( "safe",           ITsafe,          xbit FfiBit .|.
                                               xbit SafeHaskellBit),
+         ( "aliases",        ITaliases,       xbit StructuredImportsBit),
+         ( "aliases_hiding", ITaliases_hiding, xbit StructuredImportsBit),
+
          ( "interruptible",  ITinterruptible, xbit InterruptibleFfiBit),
          ( "unsafe",         ITunsafe,        xbit FfiBit),
          ( "stdcall",        ITstdcallconv,   xbit FfiBit),
@@ -2315,6 +2320,7 @@ data ExtBits
   | SafeHaskellBit
   | TraditionalRecordSyntaxBit
   | ExplicitNamespacesBit
+  | StructuredImportsBit
   | LambdaCaseBit
   | BinaryLiteralsBit
   | NegativeLiteralsBit
@@ -2400,6 +2406,7 @@ mkParserFlags' warningFlags extensionFlags thisPackage
       .|. NondecreasingIndentationBit `xoptBit` LangExt.NondecreasingIndentation
       .|. TraditionalRecordSyntaxBit  `xoptBit` LangExt.TraditionalRecordSyntax
       .|. ExplicitNamespacesBit       `xoptBit` LangExt.ExplicitNamespaces
+      .|. StructuredImportsBit        `xoptBit` LangExt.StructuredImports
       .|. LambdaCaseBit               `xoptBit` LangExt.LambdaCase
       .|. BinaryLiteralsBit           `xoptBit` LangExt.BinaryLiterals
       .|. NegativeLiteralsBit         `xoptBit` LangExt.NegativeLiterals

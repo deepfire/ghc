@@ -143,7 +143,7 @@ accumExports f = fmap (catMaybes . snd) . mapAccumLM f' emptyExportAccum
           m <- try_m (f acc x)
           pure $ case m of
             Right (Just (acc', y)) -> (acc', Just y)
-            _                      -> (acc, Nothing)
+            _                      -> (acc,  Nothing)
 
 type ExportOccMap = OccEnv (Name, IE GhcPs)
         -- Tracks what a particular exported OccName
@@ -188,7 +188,7 @@ tcRnExports explicit_mod exports
                         --       turns out to be out of scope
 
         ; let do_it = exports_from_avail real_exports rdr_env imports this_mod
-        ; (rn_exports, final_avails)
+        ; (rn_exports, (final_avails, final_avails_l1))
             <- if hsc_src == HsigFile
                 then do (msgs, mb_r) <- tryTc do_it
                         case mb_r of
@@ -201,9 +201,14 @@ tcRnExports explicit_mod exports
 
         ; let new_tcg_env =
                   tcg_env { tcg_exports    = final_avails,
+                            tcg_exports_l1 = final_avails_l1,
                              tcg_rn_exports = case tcg_rn_exports tcg_env of
                                                 Nothing -> Nothing
-                                                Just _  -> rn_exports,
+                                                Just _  ->
+                                                  (\rnes ->
+                                                      [ (lie, avs)
+                                                      | (lie, (avs, _avsl1)) <- rnes ])
+                                                  <$> rn_exports,
                             tcg_dus = tcg_dus tcg_env `plusDU`
                                       usesOnly final_ns }
         ; failIfErrsM
@@ -217,7 +222,8 @@ exports_from_avail :: Maybe (Located [LIE GhcPs])
                          -- @module Foo@ export is valid (it's not valid
                          -- if we didn't import @Foo@!)
                    -> Module
-                   -> RnM (Maybe [(LIE GhcRn, Avails)], Avails)
+                   -> RnM ( Maybe [(LIE GhcRn, (Avails, [(ModuleName, AvailInfo)]))]
+                          ,                    (Avails, [(ModuleName, AvailInfo)]))
                          -- (Nothing, _) <=> no explicit export list
                          -- if explicit export list is present it contains
                          -- each renamed export item together with its exported
@@ -235,7 +241,7 @@ exports_from_avail Nothing rdr_env _imports _this_mod
     ; let avails =
             map fix_faminst . gresToAvailInfo
               . filter isLocalGRE . globalRdrEnvElts $ rdr_env
-    ; return (Nothing, avails) }
+    ; return (Nothing, (avails, [])) } -- XXX !!!
   where
     -- #11164: when we define a data instance
     -- but not data family, re-export the family
@@ -254,11 +260,12 @@ exports_from_avail Nothing rdr_env _imports _this_mod
 
 exports_from_avail (Just (dL->L _ rdr_items)) rdr_env imports this_mod
   = do ie_avails <- accumExports do_litem rdr_items
-       let final_exports = nubAvails (concat (map snd ie_avails)) -- Combine families
-       return (Just ie_avails, final_exports)
+       let final_exports    = nubAvails   (concat (map (fst . snd) ie_avails)) -- Combine families
+           final_exports_l1 = nubAvailsL1 (concat (map (snd . snd) ie_avails)) 
+       return (Just ie_avails, (final_exports, final_exports_l1))
   where
     do_litem :: ExportAccum -> LIE GhcPs
-             -> RnM (Maybe (ExportAccum, (LIE GhcRn, Avails)))
+             -> RnM (Maybe (ExportAccum, (LIE GhcRn, (Avails, [(ModuleName, AvailInfo)]))))
     do_litem acc lie = setSrcSpan (getLoc lie) (exports_from_item acc lie)
 
     -- Maps a parent to its in-scope children
@@ -276,9 +283,10 @@ exports_from_avail (Just (dL->L _ rdr_items)) rdr_env imports this_mod
                        , imv <- importedByUser xs ]
 
     exports_from_item :: ExportAccum -> LIE GhcPs
-                      -> RnM (Maybe (ExportAccum, (LIE GhcRn, Avails)))
+                      -> RnM (Maybe (ExportAccum, (LIE GhcRn, (Avails, [(ModuleName, AvailInfo)]))))
     exports_from_item (ExportAccum occs earlier_mods)
-                      (dL->L loc ie@(IEModuleContents _ lmod@(dL->L _ mod)))
+                      (dL->L loc ie@(IEModuleContents _ lmod@(dL->L _ mod) mlmodl1))
+        -- XXX StructuredImports: duplicate export semantics here change, because of L1N exports -- revise later
         | mod `elementOfUniqSet` earlier_mods    -- Duplicate export of M
         = do { warnIfFlag Opt_WarnDuplicateExports True
                           (dupModuleExport mod) ;
@@ -287,12 +295,18 @@ exports_from_avail (Just (dL->L _ rdr_items)) rdr_env imports this_mod
         | otherwise
         = do { let { exportValid = (mod `elem` imported_modules)
                                 || (moduleName this_mod == mod)
+                                   -- XXX StructuredImports: extended validity?
                    ; gre_prs     = pickGREsModExp mod (globalRdrEnvElts rdr_env)
                    ; new_exports = [ availFromGRE gre'
                                    | (gre, _) <- gre_prs
                                    , gre' <- expand_tyty_gre gre ]
                    ; all_gres    = foldr (\(gre1,gre2) gres -> gre1 : gre2 : gres) [] gre_prs
                    ; mods        = addOneToUniqSet earlier_mods mod
+                   ; (,) level1
+                         new_exports_l1 =
+                         case mlmodl1 of
+                           Just (L _ mod) -> (True,  (,) mod <$> new_exports)
+                           Nothing  -> (False, [])
                    }
 
              ; checkErr exportValid (moduleNotImported mod)
@@ -315,13 +329,14 @@ exports_from_avail (Just (dL->L _ rdr_items)) rdr_env imports this_mod
                              , ppr new_exports ])
 
              ; return (Just ( ExportAccum occs' mods
-                            , ( cL loc (IEModuleContents noExt lmod)
-                              , new_exports))) }
+                            , ( cL loc (IEModuleContents noExt lmod mlmodl1)
+                              , ( if level1 then [] else new_exports
+                                , new_exports_l1)))) }
 
     exports_from_item acc@(ExportAccum occs mods) (dL->L loc ie)
         | isDoc ie
         = do new_ie <- lookup_doc_ie ie
-             return (Just (acc, (cL loc new_ie, [])))
+             return (Just (acc, (cL loc new_ie, ([], []))))
 
         | otherwise
         = do (new_ie, avail) <- lookup_ie ie
@@ -332,7 +347,7 @@ exports_from_avail (Just (dL->L _ rdr_items)) rdr_env imports this_mod
                     occs' <- check_occs ie occs [avail]
 
                     return (Just ( ExportAccum occs' mods
-                                 , (cL loc new_ie, [avail])))
+                                 , (cL loc new_ie, ([avail], []))))
 
     -------------
     lookup_ie :: IE GhcPs -> RnM (IE GhcRn, AvailInfo)
