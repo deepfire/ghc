@@ -269,7 +269,7 @@ rnImportDecl this_mod
                                      , ideclSource = want_boot, ideclSafe = mod_safe
                                      , ideclQualified = qual_only, ideclImplicit = implicit
                                      , ideclAs = as_mod
-                                     , ideclHiding = imp_details
+                                     , ideclHiding  = imp_details_l0
                                      , ideclAliases = imp_details_l1 }))
   = setSrcSpan loc $ do
 
@@ -306,7 +306,7 @@ rnImportDecl this_mod
 
     -- Check for a missing import list (Opt_WarnMissingImportList also
     -- checks for T(..) items but that is done in checkDodgyImport below)
-    case imp_details of
+    case imp_details_l0 of
         Just (False, _) -> return () -- Explicit import list
         _  | implicit   -> return () -- Do not bleat for implicit imports
            | qual_only  -> return ()
@@ -315,7 +315,7 @@ rnImportDecl this_mod
                                    (missingImportListWarn imp_mod_name)
     -- XXX XStructuredImports: maybe honor missingImportListWarn for level-1's
     case imp_details_l1 of
-        Just (True, unLoc -> Nothing) -> 
+        Just (True, unLoc -> Nothing) ->
           (addErr (text "An aliases_hiding import entry must specify omissions: " <+> ppr imp_mod_name))
         _ -> return ()
 
@@ -342,43 +342,24 @@ rnImportDecl this_mod
                                    ++ "Safe, Trustworthy or Unsafe"))
 
     let
-        qual_mod_name = fmap unLoc as_mod `orElse` imp_mod_name
-        imp_spec  = ImpDeclSpec { is_mod = imp_mod_name, is_qual = qual_only,
-                                  is_dloc = loc, is_as = qual_mod_name }
-
-    -- filter the imports according to the import declaration
-    ((new_imp_details, new_imp_details_l1)
-     , gres) <- filterImports iface imp_spec imp_details imp_details_l1
-    -- XXX XStructuredImports: filterImports the level-1's
-
-    -- for certain error messages, we’d like to know what could be imported
-    -- here, if everything were imported
-    potential_gres <- mkGlobalRdrEnv . snd <$> filterImports iface imp_spec Nothing Nothing
-
-    let gbl_env = mkGlobalRdrEnv gres
-
-        is_hiding    | Just (True,_) <- imp_details    = True
-                     | Just (True,_) <- imp_details_l1 = True
-                     | otherwise                       = False
-
-        is_level1    | Just _        <- imp_details_l1 = True
-                     | otherwise                       = False
-
         -- should the import be safe?
         mod_safe' = mod_safe
                     || (not implicit && safeDirectImpsReq dflags)
                     || (implicit && safeImplicitImpsReq dflags)
+        is_level1    | Just _        <- imp_details_l1 = True
+                     | otherwise                       = False
+        import_slices = if not is_level1
+                        then [(fmap unLoc as_mod `orElse` imp_mod_name, mi_exports iface)]
+                        else undefined -- XXX
+        pair_acc (xs, ys) (xs', ys') = (xs ++ xs', ys ++ ys')
+        qual_only' = qual_only || is_level1
 
-    let imv = ImportedModsVal
-            { imv_name        = qual_mod_name
-            , imv_span        = loc
-            , imv_is_safe     = mod_safe'
-            , imv_is_hiding   = is_hiding
-            , imv_is_level1   = is_level1
-            , imv_all_exports = potential_gres
-            , imv_qualified   = qual_only
-            }
-        imports = calculateAvails dflags iface mod_safe' want_boot (ImportedByUser imv)
+    (gres, imports) <- foldl' pairAcc ([], []) <$> forM import_slices
+      (processImportSliceAvails dflags
+        loc imp_mod_name iface mod_safe' want_boot
+        imp_details qual_only')
+
+    let gbl_env        = mkGlobalRdrEnv gres
 
     -- Complain if we import a deprecated module
     whenWOptM Opt_WarnWarningsDeprecations (
@@ -390,10 +371,60 @@ rnImportDecl this_mod
 
     let new_imp_decl = L loc (decl { ideclExt = noExt, ideclSafe = mod_safe'
                                    , ideclHiding  = new_imp_details
-                                   , ideclAliases = new_imp_details_l1 })
+                                   , ideclAliases = Nothing
+                                   -- For now, we're done with main processing.
+                                   -- , ideclAliases = ((Just <$>) <$>) <$> new_imp_details_l1
+                                   })
 
     return (new_imp_decl, gbl_env, imports, mi_hpc iface)
 rnImportDecl _ (L _ (XImportDecl _)) = panic "rnImportDecl"
+
+-- | For the lack of a better name, "import slice" denotes a subset of
+-- imports due to an import statement, that is confined to its distinct part
+-- of the target namespace:  either unqualified, or qualified by a particular module name.
+--
+-- Note: it's an important model-level invariant that we need not to care exactly how
+-- the Just ModuleName came to be (if any) -- due to an 'as', or due to an 'aliases' import.
+-- HOWEVER, we're currently violating this invariant, to have an implementation short-cut,
+-- by avoiding the need to deal
+processImportSliceAvails
+  :: DynFlags
+  -> SrcSpan -> ModuleName -> ModIface -> IsSafeImport -> Bool
+  -> Maybe (Bool, Located [LIE Ps]) -> Bool
+  -> (ModuleName, [AvailInfo])
+  -> RnM
+  ( [GlobalRdrElt] -- GREs due
+  , [AvailInfo]    -- imports due
+  )
+processImportSliceAvails
+  dflage
+  loc imp_mod_name iface mod_safe' want_boot
+  imp_details qual_only
+  (qual_mod_name, avails)
+  = do
+  let imp_spec  = ImpDeclSpec { is_mod = imp_mod_name, is_qual = qual_only,
+                                is_dloc = loc, is_as = qual_mod_name }
+  -- filter the imports according to the import declaration
+  -- XXX: 1. subset avails processing, 2. split out the renaming part
+  (new_imp_details, gres) <- filterImports iface imp_spec imp_details
+  -- for certain error messages, we’d like to know what could be imported
+  -- here, if everything were imported
+  potential_gres <- mkGlobalRdrEnv . snd <$> filterImports iface imp_spec Nothing
+
+  let is_hiding | Just (True,_) <- imp_details = True
+                | otherwise                    = False
+      imv = ImportedModsVal
+          { imv_name        = qual_mod_name
+          , imv_span        = loc
+          , imv_is_safe     = mod_safe'
+          , imv_is_hiding   = is_hiding
+          -- , imv_is_level1   = is_level1
+          , imv_all_exports = potential_gres
+          , imv_qualified   = qual_only
+          }
+      imports = calculateAvails dflags iface mod_safe' want_boot (ImportedByUser imv)
+
+  pure (gres, imports)
 
 -- | Calculate the 'ImportAvails' induced by an import of a particular
 -- interface, but without 'imp_mods'.
@@ -863,17 +894,15 @@ filterImports
     :: ModIface
     -> ImpDeclSpec                               -- The span for the entire import decl
     -> Maybe (Bool, Located [LIE GhcPs])         -- Import spec; True => hiding
-    -> Maybe (Bool, Located (Maybe [LIE GhcPs])) -- Aliases import spec; True => aliases_hiding
-    -> RnM ((Maybe (Bool, Located [LIE GhcRn]),  -- Import spec w/ Names
-             Maybe (Bool, Located (Maybe [LIE GhcRn]))), -- Aliases import spec w/ Names
+    -> RnM ((Maybe (Bool, Located [LIE GhcRn])), -- Import spec w/ Names
             [GlobalRdrElt])                      -- Same again, but in GRE form
-filterImports iface decl_spec Nothing _
-  = return ((Nothing, Nothing), gresFromAvails (Just imp_spec) (mi_exports iface))
+filterImports iface decl_spec Nothing
+  = return (Nothing, gresFromAvails (Just imp_spec) (mi_exports iface))
   where
     imp_spec = ImpSpec { is_decl = decl_spec, is_item = ImpAll }
 
 
-filterImports iface decl_spec (Just (want_hiding, L l import_items)) (_)
+filterImports iface decl_spec (Just (want_hiding, L l import_items))
   = do  -- check for errors, convert RdrNames to Names
         items1 <- mapM lookup_lie import_items
 
@@ -890,8 +919,7 @@ filterImports iface decl_spec (Just (want_hiding, L l import_items)) (_)
             gres | want_hiding = gresFromAvails (Just hiding_spec) pruned_avails
                  | otherwise   = concatMap (gresFromIE decl_spec) items2
 
-        return ((Just (want_hiding, L l (map fst items2))
-                ,Nothing)
+        return ((Just (want_hiding, L l (map fst items2)))
                , gres)
   where
     all_avails = mi_exports iface
@@ -969,7 +997,6 @@ filterImports iface decl_spec (Just (want_hiding, L l import_items)) (_)
             (name, avail, _) <- lookup_name ie $ ieWrappedName n
             return ([(IEVar noExt (L l (replaceWrappedName n name)),
                                                   trimAvail avail name)], [])
-
         IEThingAll _ (L l tc) -> do
             (name, avail, mb_parent) <- lookup_name ie $ ieWrappedName tc
             let warns = case avail of

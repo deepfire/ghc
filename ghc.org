@@ -181,12 +181,30 @@
       - [[file:compiler/rename/RnNames.hs::rnImportDecl%20::%20Module%20->%20LImportDecl%20GhcPs][rnImportDecl]] :: Module → Located ([[file:compiler/hsSyn/HsImpExp.hs::data%20ImportDecl%20pass][ImportDecl]] GhcPs)
                      → RnM (Located ([[file:compiler/hsSyn/HsImpExp.hs::data%20ImportDecl%20pass][ImportDecl]] GhcRn), [[file:compiler/basicTypes/RdrName.hs::type%20GlobalRdrEnv%20=%20OccEnv%20%5BGlobalRdrElt%5D][GlobalRdrEnv]], [[file:compiler/typecheck/TcRnTypes.hs::data%20ImportAvails][ImportAvails]])
         - [[file:compiler/iface/LoadIface.hs::loadSrcInterface%20::%20SDoc][loadSrcInterface]] ∷ [[file:compiler/basicTypes/Module.hs::newtype%20ModuleName%20=%20ModuleName%20FastString][ModuleName]] → RnM [[file:compiler/main/HscTypes.hs::data%20ModIface][ModIface]]
-        - [[file:compiler/rename/RnNames.hs::filterImports%20iface%20decl_spec%20(Just%20(want_hiding,%20L%20l%20import_items))%20(_)][filterImports]] :: [[file:compiler/main/HscTypes.hs::data%20ModIface][ModIface]] → [[file:compiler/basicTypes/RdrName.hs::data%20ImpDeclSpec][ImpDeclSpec]] → Maybe (Bool, Located [[[file:compiler/hsSyn/HsImpExp.hs::data%20IE%20pass][LIE]] GhcPs])
+        - [[file:compiler/rename/RnNames.hs::(new_imp_details_l1,%20gres_l1)%20<-%20filterImports%20iface%20imp_spec%20imp_details_l1'][@]] [[file:compiler/rename/RnNames.hs::filterImports%20iface%20decl_spec%20(Just%20(want_hiding,%20L%20l%20import_items))][filterImports]] :: [[file:compiler/main/HscTypes.hs::data%20ModIface][ModIface]] → [[file:compiler/basicTypes/RdrName.hs::data%20ImpDeclSpec][ImpDeclSpec]] → Maybe (Bool, Located [[[file:compiler/hsSyn/HsImpExp.hs::data%20IE%20pass][LIE]] GhcPs])
                         → RnM ((Maybe (Bool, Located [LIE GhcRn])),
                                 [[[file:compiler/basicTypes/RdrName.hs::data%20GlobalRdrElt][GlobalRdrElt]]])
+          - [[file:compiler/rename/RnNames.hs::imp_occ_env%20=%20mkOccEnv_C%20combine%20%5B%20(occ,%20(n,%20a,%20Nothing))][imp_occ_env]] = mkOccEnv_C ← [[file:compiler/basicTypes/Avail.hs::availNamesWithOccs%20::%20AvailInfo%20->%20%5B(Name,%20OccName)%5D][availNamesWithOccs]] ← all_avails
+            - [[file:compiler/basicTypes/Avail.hs::availNamesWithOccs%20::%20AvailInfo%20->%20%5B(Name,%20OccName)%5D][availNamesWithOccs]] ∷ AvailInfo → [(Name, OccName)]
+          - [[file:compiler/rename/RnNames.hs::lookup_lie%20(L%20loc%20ieRdr)][lookup_lie]] ∷ LIE GhcPs → TcRn [(LIE GhcRn, AvailInfo)]
+            - [[file:compiler/rename/RnNames.hs::lookup_ie%20ie%20=%20handle_bad_import%20$%20do][lookup_ie]]
+              - [[file:compiler/rename/RnNames.hs::lookup_name%20ie%20rdr][lookup_name]]
+                - [[file:compiler/rename/RnNames.hs::imp_occ_env%20=%20mkOccEnv_C%20combine%20%5B%20(occ,%20(n,%20a,%20Nothing))][imp_occ_env]]
+          - [[file:compiler/rename/RnNames.hs::names%20=%20availsToNameSetWithSelectors%20(map%20snd%20items2)][@]] [[file:compiler/basicTypes/Avail.hs::availsToNameSetWithSelectors%20avails%20=%20foldr%20add%20emptyNameSet%20avails][availsToNameSetWithSelectors]] → [[file:compiler/basicTypes/Avail.hs::availNamesWithSelectors%20::%20AvailInfo%20->%20%5BName%5D][availNamesWithSelectors]] ∷ [AvailInfo] → NameSet
+          - [[file:compiler/basicTypes/Avail.hs::filterAvails%20::%20(Name%20->%20Bool)%20->%20%5BAvailInfo%5D%20->%20%5BAvailInfo%5D][filterAvails]]
+          - [[file:compiler/rename/RnNames.hs::|%20otherwise%20=%20concatMap%20(gresFromIE%20decl_spec)%20items2][@]] [[file:compiler/rename/RnNames.hs::gresFromIE%20::%20ImpDeclSpec%20->%20(LIE%20GhcRn,%20AvailInfo)%20->%20%5BGlobalRdrElt%5D][gresFromIE]]    ∷ [[file:compiler/basicTypes/RdrName.hs::data%20ImpDeclSpec][ImpDeclSpec]] → (LIE GhcRn, [[file:compiler/basicTypes/Avail.hs::data%20AvailInfo%20=%20Avail%20Name%20--%20^%20An%20ordinary%20identifier%20in%20scope][AvailInfo]]) → [[[file:compiler/basicTypes/RdrName.hs::data%20GlobalRdrElt][GlobalRdrElt]]]
+            - [[file:compiler/basicTypes/RdrName.hs::gresFromAvail%20::%20(Name%20->%20Maybe%20ImportSpec)%20->%20AvailInfo%20->%20%5BGlobalRdrElt%5D][gresFromAvail]] ∷ ([[file:compiler/basicTypes/Name.hs::data%20Name%20=%20Name%20{][Name]] -> Maybe [[file:compiler/basicTypes/RdrName.hs::data%20ImportSpec%20=%20ImpSpec%20{%20is_decl%20::%20ImpDeclSpec,][ImportSpec]]) → [[file:compiler/basicTypes/Avail.hs::data%20AvailInfo%20=%20Avail%20Name%20--%20^%20An%20ordinary%20identifier%20in%20scope][AvailInfo]] → [[[file:compiler/basicTypes/RdrName.hs::data%20GlobalRdrElt][GlobalRdrElt]]]
+              - map mk_gre (availNonFldNames avail) ++ map mk_fld_gre (availFlds avail)
+              - doesn't seem all that magical:
+                1. somewhat trivially unpacks AvailInfo (keeping Thing-iness/Parent-ness)
+                2. repackages as GRE, tracking Parent-ness & defining module
+                3. seems entirely orthogonal to ImpDeclSpec.[[file:compiler/basicTypes/RdrName.hs::is_as%20::%20ModuleName,%20--%20^%20Import%20alias,%20e.g.%20from%20@as%20M@%20(or%20@Muggle@%20if%20there%20is%20no%20@as@%20clause)][is_as]]
+              - ergo, all magic seems to be due to lookup_lie
+          - ImpDeclSpec.[[file:compiler/basicTypes/RdrName.hs::is_as%20::%20ModuleName,%20--%20^%20Import%20alias,%20e.g.%20from%20@as%20M@%20(or%20@Muggle@%20if%20there%20is%20no%20@as@%20clause)][is_as]] ∷ ModuleName, -- ^ Import alias, e.g. from @as M@
+          - [[file:compiler/rename/RnNames.hs::gres%20|%20want_hiding%20=%20gresFromAvails%20(Just%20hiding_spec)%20pruned_avails][gres]] | want_hiding = [[file:compiler/basicTypes/RdrName.hs::gresFromAvails%20::%20Maybe%20ImportSpec%20->%20%5BAvailInfo%5D%20->%20%5BGlobalRdrElt%5D][gresFromAvails]] (Just hiding_spec) pruned_avails
+                 | otherwise   = concatMap ([[file:compiler/rename/RnNames.hs::gresFromIE%20::%20ImpDeclSpec%20->%20(LIE%20GhcRn,%20AvailInfo)%20->%20%5BGlobalRdrElt%5D][gresFromIE]] decl_spec) items2
         - [[file:compiler/rename/RnNames.hs::calculateAvails%20dflags%20iface%20mod_safe'%20want_boot%20imported_by%20=][calculateAvails]] :: [[file:compiler/main/HscTypes.hs::data%20ModIface][ModIface]] → [[file:compiler/typecheck/TcRnTypes.hs::data%20ImportAvails][ImportAvails]]
     - [[file:compiler/typecheck/TcRnDriver.hs::tcRnSrcDecls%20::%20Bool%20--%20False%20=>%20no%20'module%20M(..)%20where'%20header%20at%20all][tcRnSrcDecls]] :: Bool → [Located ([[file:compiler/hsSyn/HsDecls.hs::data%20HsDecl%20p][HsDecl]] GhcPs)] → TcM [[file:compiler/typecheck/TcRnTypes.hs::data%20TcGblEnv][TcGblEnv]]
-
     - [[file:compiler/typecheck/TcRnExports.hs::tcRnExports%20::%20Bool%20--%20False%20=>%20no%20'module%20M(..)%20where'%20header%20at%20all][tcRnExports]]  :: [Located [[file:compiler/hsSyn/HsImpExp.hs::data%20IE%20pass][IE]]] → [[file:compiler/typecheck/TcRnTypes.hs::data%20TcGblEnv][TcGblEnv]] → [[file:compiler/typecheck/TcRnTypes.hs::data%20TcGblEnv][TcGblEnv]]
       - see *export0*
   - import1 :: [[file:compiler/hsSyn/HsImpExp.hs::|%20IEModuleContents%20(XIEModuleContents%20pass)%20(Located%20ModuleName)%20(Maybe%20(Located%20ModuleName))][IEModuleContents]] → ModIface → ???
@@ -217,7 +235,7 @@
   - compiler/iface/LoadIface.hs
     - [[file:compiler/iface/LoadIface.hs::,%20nest%202%20(vcat%20(map%20pprExport%20(mi_exports%20iface)))][nest 2 (vcat (map pprExport (mi_exports iface)))]]
   - compiler/typecheck/TcBackpack.hs
-    - [[file:compiler/typecheck/TcBackpack.hs::(mb_lies,%20_)%20<-%20exports_from_avail%20mb_exports%20rdr_env][(mb_lies, _)]] ← exports_from_avail mb_exports rdr_env 
+    - [[file:compiler/typecheck/TcBackpack.hs::(mb_lies,%20_)%20<-%20exports_from_avail%20mb_exports%20rdr_env][(mb_lies, _)]] ← exports_from_avail mb_exports rdr_env
                          (tcg_imports tcg_env) (tcg_semantic_mod tcg_env)
   - compiler/typecheck/TcRnTypes.hs
     - [[file:compiler/typecheck/TcRnTypes.hs::tcg_exports%20::%20%5BAvailInfo%5D,%20--%20^%20What%20is%20exported][tcg_exports]] ∷ [AvailInfo]
