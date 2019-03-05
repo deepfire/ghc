@@ -1754,10 +1754,11 @@ instance ToHie (IEContext (LIE GhcRn)) where
         , toHie $ map (IEC c) ns
         , toHie $ map (IEC c) flds
         ]
-      IEModuleContents _ n ml1n ->
+      IEModuleContents _ n ->
         [ toHie $ IEC c n
-        , toHie $ IEC c n
-        ] ++ maybe [] ((:[]) . toHie . IEC c) ml1n
+        ]
+      IEAliases _ l1 ->
+        [ ] -- XXX: needs a somewhat involved lookup
       IEGroup _ _ _ -> []
       IEDoc _ _ -> []
       IEDocNamed _ _ -> []

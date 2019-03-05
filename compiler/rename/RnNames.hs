@@ -176,6 +176,7 @@ deriving instance Show RdrName
 deriving instance Show NoExt
 deriving instance Show Module
 deriving instance Show IEWildcard
+deriving instance Show L1Exports
 instance Show x => Show (Located x) where
   show x = show $ unLoc x
 
@@ -382,7 +383,6 @@ rnImportDecl this_mod
     let
         mi_level1_structure   = groupAvailsL1 $
           trace ("imp-mod-exports of "++show imp_mod_name++": "++show (mi_exports_l1 iface)) mi_exports_l1 iface
-        listToUFMTrivial xs   = listToUFM (zip xs $ repeat ())
         level1_imports :: ModuleNameEnv (ModuleName, [AvailInfo])
         level1_imports        = opUFM mi_level1_structure argUFM
           where (opUFM, argUFM) =
@@ -390,7 +390,7 @@ rnImportDecl this_mod
                   else case level1_details of
                     Nothing       ->     (,)        const emptyUFM
                     Just _details ->
-                      let moduleNameSetOperand = listToUFMTrivial level1_detail_names
+                      let moduleNameSetOperand = trivialUFM level1_detail_names
                       in if not is_level1_hiding
                          then            (,) intersectUFM moduleNameSetOperand
                          else            (,)     minusUFM moduleNameSetOperand

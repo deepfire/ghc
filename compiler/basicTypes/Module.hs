@@ -20,6 +20,7 @@ module Module
         moduleNameFS,
         moduleNameString,
         moduleNameSlashes, moduleNameColons,
+        moduleNameDotty,
         moduleStableString,
         moduleFreeHoles,
         moduleIsDefinite,
@@ -398,6 +399,11 @@ moduleNameSlashes = dots_to_slashes . moduleNameString
 moduleNameColons :: ModuleName -> String
 moduleNameColons = dots_to_colons . moduleNameString
   where dots_to_colons = map (\c -> if c == '.' then ':' else c)
+
+-- |Test whether the ModuleName contains a dot.
+--
+moduleNameDotty :: ModuleName -> Bool
+moduleNameDotty (ModuleName fs) = elem '.' $ unpackFS fs
 
 {-
 ************************************************************************

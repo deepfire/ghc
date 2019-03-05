@@ -8,10 +8,12 @@ HsImpExp: Abstract syntax: imports, exports, interfaces
 
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-} -- Note [Pass sensitive types]
                                       -- in module PlaceHolder
+{-# LANGUAGE ViewPatterns #-}
 
 module HsImpExp where
 
@@ -227,7 +229,7 @@ data IE pass
         --                                   'ApiAnnotation.AnnType'
 
         -- For details on above see note [Api annotations] in ApiAnnotation
-  | IEModuleContents  (XIEModuleContents pass) (Located ModuleName) (Maybe (Located ModuleName))
+  | IEModuleContents  (XIEModuleContents pass) (Located ModuleName)
         -- ^ Imported or exported module contents
         --
         -- (Export Only)
@@ -235,16 +237,23 @@ data IE pass
         -- - 'ApiAnnotation.AnnKeywordId's : 'ApiAnnotation.AnnModule'
 
         -- For details on above see note [Api annotations] in ApiAnnotation
+  | IEAliases           (XIEAliases pass) (Located L1Exports)
   | IEGroup             (XIEGroup pass) Int HsDocString -- ^ Doc section heading
   | IEDoc               (XIEDoc pass) HsDocString       -- ^ Some documentation
   | IEDocNamed          (XIEDocNamed pass) String    -- ^ Reference to named doc
   | XIE (XXIE pass)
+
+data L1Exports
+  = L1All                                   -- ^ 'module X.Y.Z aliases', wildcard level-1 multi-exports
+  | L1Hiding Bool [(Located ModuleName)]    -- ^ 'module X.Y.Z aliases/aliases_hiding (..)'
+  deriving (Eq, Data)
 
 type instance XIEVar             (GhcPass _) = NoExt
 type instance XIEThingAbs        (GhcPass _) = NoExt
 type instance XIEThingAll        (GhcPass _) = NoExt
 type instance XIEThingWith       (GhcPass _) = NoExt
 type instance XIEModuleContents  (GhcPass _) = NoExt
+type instance XIEAliases         (GhcPass _) = NoExt
 type instance XIEGroup           (GhcPass _) = NoExt
 type instance XIEDoc             (GhcPass _) = NoExt
 type instance XIEDocNamed        (GhcPass _) = NoExt
@@ -284,6 +293,7 @@ ieNames (IEThingAll  _ (L _ n)   )     = [ieWrappedName n]
 ieNames (IEThingWith _ (L _ n) _ ns _) = ieWrappedName n
                                        : map (ieWrappedName . unLoc) ns
 ieNames (IEModuleContents {})     = []
+ieNames (IEAliases        {})     = []
 ieNames (IEGroup          {})     = []
 ieNames (IEDoc            {})     = []
 ieNames (IEDocNamed       {})     = []
@@ -308,6 +318,14 @@ replaceWrappedName (IEType    (L l _)) n = IEType    (L l n)
 replaceLWrappedName :: LIEWrappedName name1 -> name2 -> LIEWrappedName name2
 replaceLWrappedName (L l n) n' = L l (replaceWrappedName n n')
 
+instance Outputable L1Exports where
+    ppr = let pph xs = parens $ fsep $ punctuate comma $ map (ppr . unLoc) xs
+      in \case
+      L1All             -> text "aliases"
+      L1Hiding False xs -> text "aliases"        <+> pph xs
+      L1Hiding True  xs -> text "aliases_hiding" <+> pph xs
+        
+
 instance (p ~ GhcPass pass,OutputableBndrId p) => Outputable (IE p) where
     ppr (IEVar       _     var) = ppr (unLoc var)
     ppr (IEThingAbs  _   thing) = ppr (unLoc thing)
@@ -324,10 +342,9 @@ instance (p ~ GhcPass pass,OutputableBndrId p) => Outputable (IE p) where
               IEWildcard pos ->
                 let (bs, as) = splitAt pos (map (ppr . unLoc) withs)
                 in bs ++ [text ".."] ++ as
-    ppr (IEModuleContents _ mod' mL1N)
-        = text "module" <+> ppr mod' <+> case mL1N of
-                                           Just l1N -> text "as" <+> ppr l1N
-                                           Nothing  -> text ""
+    ppr (IEModuleContents _ mod')
+        = text "module" <+> ppr mod'
+    ppr (IEAliases _ (unLoc -> l1e)) = ppr l1e
     ppr (IEGroup _ n _)           = text ("<IEGroup: " ++ show n ++ ">")
     ppr (IEDoc _ doc)             = ppr doc
     ppr (IEDocNamed _ string)     = text ("<IEDocNamed: " ++ string ++ ">")

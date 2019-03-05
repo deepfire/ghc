@@ -92,7 +92,7 @@ import Util             ( looksLikePackageName, fstOf3, sndOf3, thdOf3 )
 import GhcPrelude
 }
 
-%expect 244 -- shift/reduce conflicts
+%expect 246 -- shift/reduce conflicts
 
 {- Last updated: 04 June 2018
 
@@ -880,11 +880,17 @@ exp_doc :: { OrdList (LIE GhcPs) }
 export  :: { OrdList (LIE GhcPs) }
         : qcname_ext export_subspec  {% mkModuleImpExp $1 (snd $ unLoc $2)
                                           >>= \ie -> amsu (sLL $1 $> ie) (fst $ unLoc $2) }
-        |  'module' modid maybeexpas maybeexpaliases -- XXX: maybeexpaliases ignored !!!
-                                     {% amsu (sLL $1 $> (IEModuleContents noExt $2 (sequence $3)))
+        |  'module' modid
+                                     {% amsu (sLL $1 $> (IEModuleContents noExt $2))
                                              [mj AnnModule $1] }
         |  'pattern' qcon            {% amsu (sLL $1 $> (IEVar noExt (sLL $1 $> (IEPattern $2))))
                                              [mj AnnPattern $1] }
+        | 'aliases' m_aliases_limit  {% amsu (sLL $1 $> (IEAliases noExt $2))
+                                             [] }
+        | 'aliases_hiding' '(' names_l1 ')'
+                                     {% amsu (sLL $1 $> (IEAliases noExt
+                                             (sLL $2 $> (L1Hiding True $3))))
+                                             [] }
 
 export_subspec :: { Located ([AddAnn],ImpExpSubSpec) }
         : {- empty -}             { sL0 ([],ImpExpAbs) }
@@ -892,13 +898,13 @@ export_subspec :: { Located ([AddAnn],ImpExpSubSpec) }
                                       >>= \(as,ie) -> return $ sLL $1 $>
                                             (as ++ [mop $1,mcp $3] ++ fst $2, ie) }
 
-maybeexpas :: { Located (Maybe ModuleName) }
-        : 'as' modid              { sLL $1 $> (Just (unLoc $2)) }
-        | {- empty -}             { noLoc Nothing }
+m_aliases_limit :: { Located L1Exports }
+        : '(' '..'     ')'        { sLL $1 $>  L1All }
+        | '(' names_l1 ')'        { sLL $1 $> (L1Hiding False $2) }
 
-maybeexpaliases :: { Located Bool }
-        : 'aliases'               { sLL $1 $> True }
-        | {- empty -}             { noLoc False }
+names_l1 :: { [Located ModuleName] }
+        : modid              { [$1] }
+        | modid ',' names_l1 { $1 : $3 }
 
 qcnames :: { ([AddAnn], [Located ImpExpQcSpec]) }
   : {- empty -}                   { ([],[]) }

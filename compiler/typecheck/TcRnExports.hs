@@ -36,10 +36,12 @@ import DataCon
 import PatSyn
 import Maybes
 import UniqSet
+import UniqFM
 import Util (capitalise)
 import FastString (fsLit)
 
 import Control.Monad
+import Data.List        (intercalate)
 import DynFlags
 import RnHsDoc          ( rnHsDoc )
 import RdrHsSyn        ( setRdrNameSpace )
@@ -293,11 +295,43 @@ exports_from_avail (Just (dL->L _ rdr_items)) rdr_env imports this_mod
                        | xs <- moduleEnvElts $ imp_mods imports
                        , imv <- importedByUser xs ]
 
+    imported_level1 :: UniqSet ModuleName
+    imported_level1 = mkUniqSet $ filter moduleNameDotty imported_modules
+        -- Note, that this also includes non-"aliases",
+        -- in form of single-element module names.
+
     exports_from_item :: ExportAccum -> LIE GhcPs
                       -> RnM (Maybe (ExportAccum, (LIE GhcRn, (Avails, [(ModuleName, AvailInfo)]))))
     exports_from_item (ExportAccum occs earlier_mods)
-                      (dL->L loc ie@(IEModuleContents _ lmod@(dL->L _ mod) mlmodl1))
-        -- XXX StructuredImports: duplicate export semantics here change, because of L1N exports -- revise later
+                      (dL->L loc ie@(IEAliases _ l1e@(unLoc->l1names)))
+        = do { let { gre_prs = globalRdrEnvElts rdr_env
+                   ; mods    = earlier_mods -- XXX: deal with duplicates
+                   ; occs'   = occs         -- XXX: deal with conflicts
+                   ; exports_level1 :: [(ModuleName, AvailInfo)]
+                   ; exports_level1 = undefined
+                   -- XXX: the concat is probably slightly horrendous
+                   -- ; exports_level1 = concat $ eltsUFM $
+                   --                    operand1UFM `opUFM` operand2UFM where
+                   --     (opUFM, operand1UFM, operand2UFM) = case l1exps of
+                   --       L1All    -> (,,)        const all_level1_names emptyUFM
+                   --       L1Hiding hiding xs ->
+                   --         let moduleNameSetOperand2 = trivialUFM $ unLoc <$> xs
+                   --         in if hiding
+                   --         then      (,,)     minusUFM all_level1_names moduleNameSetOperand2
+                   --         else      (,,) intersectUFM all_level1_names moduleNameSetOperand2
+                   }
+
+             ; traceRn "export_l1"
+                       (vcat [ ppr l1names
+                             , ppr exports_level1
+                             , ppr ie])
+
+             ; return (Just ( ExportAccum occs' mods
+                            , ( cL loc (IEAliases noExt l1e)
+                              , ( [], exports_level1 )))) }
+
+    exports_from_item (ExportAccum occs earlier_mods)
+                      (dL->L loc ie@(IEModuleContents _ lmod@(dL->L _ mod)))
         | mod `elementOfUniqSet` earlier_mods    -- Duplicate export of M
         = do { warnIfFlag Opt_WarnDuplicateExports True
                           (dupModuleExport mod) ;
@@ -313,12 +347,6 @@ exports_from_avail (Just (dL->L _ rdr_items)) rdr_env imports this_mod
                                    , gre' <- expand_tyty_gre gre ]
                    ; all_gres    = foldr (\(gre1,gre2) gres -> gre1 : gre2 : gres) [] gre_prs
                    ; mods        = addOneToUniqSet earlier_mods mod
-                   ; (,) level1
-                         new_exports_l1 =
-                         case mlmodl1 of
-                           Just (L _ mod) -> (True,  (,) mod <$> new_exports)
-                           Nothing  -> (False, [])
-                     +++++++++++++++++++++++++++++++++++++++++++++++++++++++++
                    }
 
              ; checkErr exportValid (moduleNotImported mod)
@@ -341,9 +369,8 @@ exports_from_avail (Just (dL->L _ rdr_items)) rdr_env imports this_mod
                              , ppr new_exports ])
 
              ; return (Just ( ExportAccum occs' mods
-                            , ( cL loc (IEModuleContents noExt lmod mlmodl1)
-                              , ( if level1 then [] else new_exports
-                                , new_exports_l1)))) }
+                            , ( cL loc (IEModuleContents noExt lmod)
+                              , ( new_exports, [] )))) }
 
     exports_from_item acc@(ExportAccum occs mods) (dL->L loc ie)
         | isDoc ie
@@ -732,6 +759,7 @@ dupExport_ok n ie1 ie2
         || (explicit_in ie1 && explicit_in ie2) )
   where
     explicit_in (IEModuleContents {}) = False                   -- module M
+    explicit_in (IEAliases {}) = True
     explicit_in (IEThingAll _ r)
       = nameOccName n == rdrNameOcc (ieWrappedName $ unLoc r)  -- T(..)
     explicit_in _              = True
