@@ -9,6 +9,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE StandaloneDeriving, FlexibleContexts, TypeSynonymInstances, FlexibleInstances #-}
 
 module RnNames (
         rnImports, getLocalNonValBinders, newRecordSelector,
@@ -58,15 +59,18 @@ import FastString
 import FastStringEnv
 import Id
 import Type
+import UniqFM
 import PatSyn
 import qualified GHC.LanguageExtensions as LangExt
 
+import Control.Applicative ((<|>))
 import Control.Monad
 import Data.Either      ( partitionEithers, isRight, rights )
+import Debug.Trace      ( trace )
 import Data.Map         ( Map )
 import qualified Data.Map as Map
 import Data.Ord         ( comparing )
-import Data.List        ( partition, (\\), find, sortBy )
+import Data.List        ( partition, (\\), find, sortBy, intercalate )
 import qualified Data.Set as S
 import System.FilePath  ((</>))
 
@@ -163,6 +167,18 @@ with yes we have gone with no for now.
 -- the return types represent.
 -- Note: Do the non SOURCE ones first, so that we get a helpful warning
 -- for SOURCE ones that are unnecessary
+instance Show a => Show (ModuleEnv a) where
+  show xs = "(ModEnv "++intercalate " " (show <$> moduleEnvElts xs)++")"
+deriving instance Show (IE GhcPs)
+deriving instance Show (IEWrappedName RdrName)
+deriving instance Show (FieldLbl RdrName)
+deriving instance Show RdrName
+deriving instance Show NoExt
+deriving instance Show Module
+deriving instance Show IEWildcard
+instance Show x => Show (Located x) where
+  show x = show $ unLoc x
+
 rnImports :: [LImportDecl GhcPs]
           -> RnM ([LImportDecl GhcRn], GlobalRdrEnv, ImportAvails, AnyHpcUsage)
 rnImports imports = do
@@ -278,7 +294,7 @@ rnImportDecl this_mod
         when (not pkg_imports) $ addErr packageImportErr
 
     -- If there's an error in loadInterface, (e.g. interface
-    -- file not found) we get lots of spurious errors from 'filterImports'
+    -- file not found) we get lots of spurious errors from 'filterSliceImports'
     let imp_mod_name = unLoc loc_imp_mod_name
         doc = ppr imp_mod_name <+> text "is directly imported"
 
@@ -303,6 +319,10 @@ rnImportDecl this_mod
              Just (StringLiteral _ pkg_fs) -> pkg_fs == fsLit "this" ||
                             fsToUnitId pkg_fs == moduleUnitId this_mod))
          (addErr (text "A module cannot import itself:" <+> ppr imp_mod_name))
+
+    when (isJust imp_details_l0 &&
+          isJust imp_details_l1) $
+      addErr (text "Cannot mix level-0 and level-1 imports in a single statement.")
 
     -- Check for a missing import list (Opt_WarnMissingImportList also
     -- checks for T(..) items but that is done in checkDodgyImport below)
@@ -340,26 +360,84 @@ rnImportDecl this_mod
         addErr (text "safe import can't be used as Safe Haskell isn't on!"
                 $+$ ptext (sLit $ "please enable Safe Haskell through either "
                                    ++ "Safe, Trustworthy or Unsafe"))
+    let level1_details :: Maybe [LIE GhcPs]
+        (,,) is_level1 is_level1_hiding level1_details = case imp_details_l1 of
+          Nothing                    -> (,,) False False Nothing
+          Just (hiding, unLoc -> xs) -> (,,) True hiding xs
+        normaliseL1ImportLIE :: LIE GhcPs -> RnM (Maybe ModuleName)
+        normaliseL1ImportLIE
+          (unLoc -> IEThingAbs _ (unLoc -> IEName (unLoc -> Unqual occ))) =
+          if isTcOcc occ
+          then pure $ Just $ mkModuleName $ occNameString occ
+          else do
+            addErr (text "An aliases import entry had a non-module-name: " <+> ppr occ <+> text ("/"++show occ))
+            pure Nothing
+        normaliseL1ImportLIE x = do
+          addErr (text "An aliases import entry had a non-module-name: " <+> ppr x <+> text ("/"++show (unLoc x)))
+          pure Nothing
+
+    level1_detail_names <- catMaybes <$> mapM normaliseL1ImportLIE
+      (fromMaybe [] level1_details)
 
     let
+        mi_level1_structure   = groupAvailsL1 $
+          trace ("imp-mod-exports of "++show imp_mod_name++": "++show (mi_exports_l1 iface)) mi_exports_l1 iface
+        listToUFMTrivial xs   = listToUFM (zip xs $ repeat ())
+        level1_imports :: ModuleNameEnv (ModuleName, [AvailInfo])
+        level1_imports        = opUFM mi_level1_structure argUFM
+          where (opUFM, argUFM) =
+                  if not is_level1  then (,)        const emptyUFM
+                  else case level1_details of
+                    Nothing       ->     (,)        const emptyUFM
+                    Just _details ->
+                      let moduleNameSetOperand = listToUFMTrivial level1_detail_names
+                      in if not is_level1_hiding
+                         then            (,) intersectUFM moduleNameSetOperand
+                         else            (,)     minusUFM moduleNameSetOperand
+        level1_imports_list   = eltsUFM level1_imports
+        regular_level1_name   = fmap unLoc as_mod `orElse` imp_mod_name
+        level1_names          = regular_level1_name : (fst <$> level1_imports_list)
+        -- ^ ..due to normal 'as'/qualified import.
+        import_slices :: [( Maybe (Bool, Located [LIE GhcPs])
+                          , ModuleName
+                          , [AvailInfo]
+                          )]
+        import_slices =
+          if not is_level1
+          then [(imp_details_l0, regular_level1_name, mi_exports iface)]
+          else (\(x,y)-> (Nothing, x, y)) <$> level1_imports_list
+        slice_acc (mds, xs, ys) (mds', xs', ys') = (mds <|> mds', xs ++ xs', ys ++ ys')
+        qual_only' = qual_only || is_level1
         -- should the import be safe?
         mod_safe' = mod_safe
                     || (not implicit && safeDirectImpsReq dflags)
                     || (implicit && safeImplicitImpsReq dflags)
-        is_level1    | Just _        <- imp_details_l1 = True
-                     | otherwise                       = False
-        import_slices = if not is_level1
-                        then [(fmap unLoc as_mod `orElse` imp_mod_name, mi_exports iface)]
-                        else undefined -- XXX
-        pair_acc (xs, ys) (xs', ys') = (xs ++ xs', ys ++ ys')
-        qual_only' = qual_only || is_level1
+        is_hiding_level0 | True          <- is_level1      = False
+                         | Just (True,_) <- imp_details_l0 = True
+                         | otherwise                       = False
 
-    (gres, imports) <- foldl' pairAcc ([], []) <$> forM import_slices
-      (processImportSliceAvails dflags
-        loc imp_mod_name iface mod_safe' want_boot
-        imp_details qual_only')
+    (new_imp_details', gres, potential_gres)
+      <- foldl' slice_acc (Nothing, [], []) <$> forM import_slices
+         (rnImportSlice loc imp_mod_name iface qual_only')
 
-    let gbl_env        = mkGlobalRdrEnv gres
+    let gbl_env         = mkGlobalRdrEnv gres
+        new_imp_details = if is_level1
+                          then Nothing
+                          else new_imp_details'
+    let imbys =
+          [ ImportedByUser $ ImportedModsVal
+            { imv_name        = l1name
+            , imv_span        = loc
+            , imv_is_safe     = mod_safe'
+            , imv_is_hiding   = is_hiding_level0
+            , imv_is_level1   = is_level1
+            , imv_all_exports = mkGlobalRdrEnv potential_gres
+                                -- XXX: this is _probably_ off for L1
+            , imv_qualified   = qual_only
+            }
+          | l1name <- level1_names ]
+        imports = calculateAvails dflags iface mod_safe' want_boot
+          (trace ("imports due to "++show level1_names++": "++show imbys) imbys)
 
     -- Complain if we import a deprecated module
     whenWOptM Opt_WarnWarningsDeprecations (
@@ -376,55 +454,40 @@ rnImportDecl this_mod
                                    -- , ideclAliases = ((Just <$>) <$>) <$> new_imp_details_l1
                                    })
 
-    return (new_imp_decl, gbl_env, imports, mi_hpc iface)
+    return (new_imp_decl, gbl_env, -- trace ("imp_avails: "++show (imp_mods $ imports))
+             imports, mi_hpc iface)
 rnImportDecl _ (L _ (XImportDecl _)) = panic "rnImportDecl"
 
--- | For the lack of a better name, "import slice" denotes a subset of
--- imports due to an import statement, that is confined to its distinct part
--- of the target namespace:  either unqualified, or qualified by a particular module name.
---
+{-
+Note [Import Slices]
+~~~~~~~~~~~~~~~~~~~~
+For the lack of a better name, an "import slice" denotes a subset of
+imports due to an import statement, that is confined to its distinct part
+of the target namespace:  either unqualified, or qualified by a particular module name.
+-}
+
+-- | Rename an import slice
 -- Note: it's an important model-level invariant that we need not to care exactly how
 -- the Just ModuleName came to be (if any) -- due to an 'as', or due to an 'aliases' import.
--- HOWEVER, we're currently violating this invariant, to have an implementation short-cut,
--- by avoiding the need to deal
-processImportSliceAvails
-  :: DynFlags
-  -> SrcSpan -> ModuleName -> ModIface -> IsSafeImport -> Bool
-  -> Maybe (Bool, Located [LIE Ps]) -> Bool
-  -> (ModuleName, [AvailInfo])
+rnImportSlice :: SrcSpan -> ModuleName -> ModIface -> Bool
+  -> (Maybe (Bool, Located [LIE GhcPs]), ModuleName, [AvailInfo])
   -> RnM
-  ( [GlobalRdrElt] -- GREs due
-  , [AvailInfo]    -- imports due
+  ( Maybe (Bool, Located [LIE GhcRn])
+  , [GlobalRdrElt] -- GREs due
+  , [GlobalRdrElt] -- potential GREs due
   )
-processImportSliceAvails
-  dflage
-  loc imp_mod_name iface mod_safe' want_boot
-  imp_details qual_only
-  (qual_mod_name, avails)
+rnImportSlice loc imp_mod_name iface qual_only
+  (imp_details, qual_mod_name, avails)
   = do
   let imp_spec  = ImpDeclSpec { is_mod = imp_mod_name, is_qual = qual_only,
                                 is_dloc = loc, is_as = qual_mod_name }
   -- filter the imports according to the import declaration
-  -- XXX: 1. subset avails processing, 2. split out the renaming part
-  (new_imp_details, gres) <- filterImports iface imp_spec imp_details
+  (new_imp_details, gres) <- filterSliceImports iface imp_spec avails imp_details
   -- for certain error messages, we’d like to know what could be imported
   -- here, if everything were imported
-  potential_gres <- mkGlobalRdrEnv . snd <$> filterImports iface imp_spec Nothing
+  (_, potential_gres) <- filterSliceImports iface imp_spec avails Nothing
 
-  let is_hiding | Just (True,_) <- imp_details = True
-                | otherwise                    = False
-      imv = ImportedModsVal
-          { imv_name        = qual_mod_name
-          , imv_span        = loc
-          , imv_is_safe     = mod_safe'
-          , imv_is_hiding   = is_hiding
-          -- , imv_is_level1   = is_level1
-          , imv_all_exports = potential_gres
-          , imv_qualified   = qual_only
-          }
-      imports = calculateAvails dflags iface mod_safe' want_boot (ImportedByUser imv)
-
-  pure (gres, imports)
+  pure (new_imp_details, gres, potential_gres)
 
 -- | Calculate the 'ImportAvails' induced by an import of a particular
 -- interface, but without 'imp_mods'.
@@ -432,7 +495,7 @@ calculateAvails :: DynFlags
                 -> ModIface
                 -> IsSafeImport
                 -> IsBootInterface
-                -> ImportedBy
+                -> [ImportedBy]
                 -> ImportAvails
 calculateAvails dflags iface mod_safe' want_boot imported_by =
   let imp_mod    = mi_module iface
@@ -508,7 +571,7 @@ calculateAvails dflags iface mod_safe' want_boot imported_by =
             ([], (ipkg, False) : dep_pkgs deps, False)
 
   in ImportAvails {
-          imp_mods       = unitModuleEnv (mi_module iface) [imported_by],
+          imp_mods       = unitModuleEnv (mi_module iface) imported_by,
           imp_orphs      = orphans,
           imp_finsts     = finsts,
           imp_dep_mods   = mkModDeps dependent_mods,
@@ -890,19 +953,20 @@ Note that the imp_occ_env will have entries for data constructors too,
 although we never look up data constructors.
 -}
 
-filterImports
+filterSliceImports
     :: ModIface
     -> ImpDeclSpec                               -- The span for the entire import decl
+    -> [AvailInfo]                               -- Avails of the slice to filter
     -> Maybe (Bool, Located [LIE GhcPs])         -- Import spec; True => hiding
     -> RnM ((Maybe (Bool, Located [LIE GhcRn])), -- Import spec w/ Names
             [GlobalRdrElt])                      -- Same again, but in GRE form
-filterImports iface decl_spec Nothing
-  = return (Nothing, gresFromAvails (Just imp_spec) (mi_exports iface))
+filterSliceImports _iface decl_spec import_slice_avails Nothing
+  = return (Nothing, gresFromAvails (Just imp_spec) import_slice_avails)
   where
     imp_spec = ImpSpec { is_decl = decl_spec, is_item = ImpAll }
 
 
-filterImports iface decl_spec (Just (want_hiding, L l import_items))
+filterSliceImports iface decl_spec import_slice_avails (Just (want_hiding, L l import_items))
   = do  -- check for errors, convert RdrNames to Names
         items1 <- mapM lookup_lie import_items
 
@@ -913,7 +977,7 @@ filterImports iface decl_spec (Just (want_hiding, L l import_items))
 
             names  = availsToNameSetWithSelectors (map snd items2)
             keep n = not (n `elemNameSet` names)
-            pruned_avails = filterAvails keep all_avails
+            pruned_avails = filterAvails keep import_slice_avails
             hiding_spec = ImpSpec { is_decl = decl_spec, is_item = ImpAll }
 
             gres | want_hiding = gresFromAvails (Just hiding_spec) pruned_avails
@@ -922,19 +986,17 @@ filterImports iface decl_spec (Just (want_hiding, L l import_items))
         return ((Just (want_hiding, L l (map fst items2)))
                , gres)
   where
-    all_avails = mi_exports iface
-
         -- See Note [Dealing with imports]
     imp_occ_env :: OccEnv (Name,    -- the name
                            AvailInfo,   -- the export item providing the name
                            Maybe Name)  -- the parent of associated types
     imp_occ_env = mkOccEnv_C combine [ (occ, (n, a, Nothing))
-                                     | a <- all_avails
+                                     | a <- import_slice_avails
                                      , (n, occ) <- availNamesWithOccs a]
       where
         -- See Note [Dealing with imports]
         -- 'combine' is only called for associated data types which appear
-        -- twice in the all_avails. In the example, we combine
+        -- twice in the import_slice_avails. In the example, we combine
         --    T(T,T1,T2,T3) and C(C,T)  to give   (T, T(T,T1,T2,T3), Just C)
         -- NB: the AvailTC can have fields as well as data constructors (Trac #12127)
         combine (name1, a1@(AvailTC p1 _ _), mp1)
@@ -943,7 +1005,7 @@ filterImports iface decl_spec (Just (want_hiding, L l import_items))
                    , ppr name1 <+> ppr name2 <+> ppr mp1 <+> ppr mp2 )
             if p1 == name1 then (name1, a1, Just p2)
                            else (name1, a2, Just p1)
-        combine x y = pprPanic "filterImports/combine" (ppr x $$ ppr y)
+        combine x y = pprPanic "filterSliceImports/combine" (ppr x $$ ppr y)
 
     lookup_name :: IE GhcPs -> RdrName -> IELookupM (Name, AvailInfo, Maybe Name)
     lookup_name ie rdr
@@ -975,7 +1037,7 @@ filterImports iface decl_spec (Just (want_hiding, L l import_items))
               Succeeded a -> return (Just a)
 
             lookup_err_msg err = case err of
-              BadImport ie  -> badImportItemErr iface decl_spec ie all_avails
+              BadImport ie  -> badImportItemErr iface decl_spec ie import_slice_avails
               IllegalImport -> illegalImportItemErr
               QualImportError rdr -> qualImportItemErr rdr
 
@@ -1046,7 +1108,7 @@ filterImports iface decl_spec (Just (want_hiding, L l import_items))
 
            let (ns,subflds) = case avail of
                                 AvailTC _ ns' subflds' -> (ns',subflds')
-                                Avail _                -> panic "filterImports"
+                                Avail _                -> panic "filterSliceImports"
 
            -- Look up the children in the sub-names of the parent
            let subnames = case ns of   -- The tc is first in ns,

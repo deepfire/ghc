@@ -3,7 +3,7 @@
 (c) The GRASP/AQUA Project, Glasgow University, 1992-1998
 -}
 
-{-# LANGUAGE CPP, DeriveDataTypeable #-}
+{-# LANGUAGE CPP, DeriveDataTypeable, TypeSynonymInstances, FlexibleInstances#-}
 
 -- |
 -- #name_types#
@@ -88,7 +88,7 @@ import Util
 import NameEnv
 
 import Data.Data
-import Data.List( sortBy )
+import Data.List( sortBy, intercalate )
 
 {-
 ************************************************************************
@@ -429,6 +429,8 @@ the in-scope-name-set.
 
 -- | Global Reader Environment
 type GlobalRdrEnv = OccEnv [GlobalRdrElt]
+instance Show GlobalRdrEnv where
+  show xs = "(GloRdrEnv "++intercalate " " (show <$> occEnvElts xs)++")"
 -- ^ Keyed by 'OccName'; when looking up a qualified name
 -- we look up the 'OccName' part, and then check the 'Provenance'
 -- to see if the appropriate qualification is valid.  This
@@ -465,6 +467,8 @@ data GlobalRdrElt
     } deriving (Data, Eq)
          -- INVARIANT: either gre_lcl = True or gre_imp is non-empty
          -- See Note [GlobalRdrElt provenance]
+instance Show GlobalRdrElt where
+  show gre = "gre:"++show (gre_name gre)
 
 -- | The children of a Name are the things that are abbreviated by the ".."
 --   notation in export lists.  See Note [Parents]

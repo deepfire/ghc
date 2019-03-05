@@ -25,8 +25,8 @@ module Avail (
     filterAvail,
     filterAvails,
     nubAvails,
-    nubAvailsL1
-
+    nubAvailsL1,
+    groupAvailsL1
 
   ) where
 
@@ -72,6 +72,9 @@ data AvailInfo
 
    deriving ( Eq    -- ^ Used when deciding if the interface has changed
             , Data )
+instance Show AvailInfo where
+  show (Avail x) = "av:"++show x
+  show (AvailTC x _ _) = "avTC:"++show x
 
 -- | A collection of 'AvailInfo' - several things that are \"available\"
 type Avails = [AvailInfo]
@@ -285,6 +288,12 @@ nubAvailsL1 l1_avails = concat $ eltsUFM <$> eltsUFM l1Map
              -> (ModuleName, AvailInfo)
              -> ModuleNameEnv (NameEnv (ModuleName, AvailInfo))
     addL1 env modAvail@(mod, _) = addToUFM_Acc (flip add) addAvail env mod modAvail
+
+groupAvailsL1 :: [(ModuleName, AvailInfo)] -> ModuleNameEnv (ModuleName, [AvailInfo])
+groupAvailsL1 l1_avails = foldl' addL1 emptyUFM l1_avails
+  where
+    add   (mod, avs) av = (mod, av:avs)
+    addL1 env (mod, av) = addToUFM_Acc (flip add) (add (mod, [])) env mod av
 
 -- -----------------------------------------------------------------------------
 -- Printing

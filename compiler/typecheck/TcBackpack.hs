@@ -842,7 +842,7 @@ mergeSignatures
             -- supposed to include itself in its dep_orphs/dep_finsts.  See #13214
             iface' = iface { mi_orphan = False, mi_finsts = False }
             avails = plusImportAvails (tcg_imports tcg_env) $
-                        calculateAvails dflags iface' False False ImportedBySystem
+                        calculateAvails dflags iface' False False [ImportedBySystem]
         return tcg_env {
             tcg_inst_env = inst_env,
             tcg_insts    = insts,
@@ -929,7 +929,7 @@ checkImplements impl_mod req_mod@(IndefModule uid mod_name) =
 
     dflags <- getDynFlags
     let avails = calculateAvails dflags
-                    impl_iface False{- safe -} False{- boot -} ImportedBySystem
+                    impl_iface False{- safe -} False{- boot -} [ImportedBySystem]
         fix_env = mkNameEnv [ (gre_name rdr_elt, FixItem occ f)
                             | (occ, f) <- mi_fixities impl_iface
                             , rdr_elt <- lookupGlobalRdrEnv impl_gr occ ]

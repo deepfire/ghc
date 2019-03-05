@@ -325,6 +325,8 @@ addBootSuffixLocnOut locn
 
 -- | A ModuleName is essentially a simple string, e.g. @Data.List@.
 newtype ModuleName = ModuleName FastString
+instance Show ModuleName where
+  show ms = "mod:"++moduleNameString ms
 
 instance Uniquable ModuleName where
   getUnique (ModuleName nm) = getUnique nm

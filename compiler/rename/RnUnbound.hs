@@ -1,3 +1,7 @@
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-
 
 This module contains helper functions for reporting and creating
@@ -29,8 +33,10 @@ import Maybes
 import DynFlags
 import FastString
 import Data.List
+import UniqFM
 import Data.Function ( on )
 import UniqDFM (udfmToList)
+import Debug.Trace (trace)
 
 {-
 ************************************************************************
@@ -301,7 +307,7 @@ importSuggestions where_look global_env hpt currMod imports rdr_name
   -- or, if this is an unqualified name, are not qualified imports
   interesting_imports = [ (mod, imp)
     | (mod, mod_imports) <- moduleEnvToList (imp_mods imports)
-    , Just imp <- return $ pick (importedByUser mod_imports)
+    , Just imp <- return $ pick (importedByUser (trace ("mod_imports: " ++ show mod_imports) mod_imports))
     ]
 
   -- We want to keep only one for each original module; preferably one with an

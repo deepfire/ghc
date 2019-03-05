@@ -4,6 +4,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE StandaloneDeriving, TypeSynonymInstances, FlexibleInstances #-}
 
 module TcRnExports (tcRnExports, exports_from_avail) where
 
@@ -214,6 +215,10 @@ tcRnExports explicit_mod exports
         ; failIfErrsM
         ; return new_tcg_env }
 
+deriving instance Show (IE GhcRn)
+deriving instance Show (IEWrappedName Name)
+deriving instance Show (FieldLbl Name)
+
 exports_from_avail :: Maybe (Located [LIE GhcPs])
                          -- ^ 'Nothing' means no explicit export list
                    -> GlobalRdrEnv
@@ -266,7 +271,13 @@ exports_from_avail (Just (dL->L _ rdr_items)) rdr_env imports this_mod
   where
     do_litem :: ExportAccum -> LIE GhcPs
              -> RnM (Maybe (ExportAccum, (LIE GhcRn, (Avails, [(ModuleName, AvailInfo)]))))
-    do_litem acc lie = setSrcSpan (getLoc lie) (exports_from_item acc lie)
+    do_litem acc lie = setSrcSpan (getLoc lie) $ do
+        xs <- exports_from_item acc lie
+        pure (trace (mesg xs) xs)
+          where mesg xs = "exports due to "++show (unLoc lie)++": "++
+                  case xs of
+                    Nothing -> "nil"
+                    Just (acc, (lie, (avs, xs))) -> show avs++show xs
 
     -- Maps a parent to its in-scope children
     kids_env :: NameEnv [GlobalRdrElt]
@@ -307,6 +318,7 @@ exports_from_avail (Just (dL->L _ rdr_items)) rdr_env imports this_mod
                          case mlmodl1 of
                            Just (L _ mod) -> (True,  (,) mod <$> new_exports)
                            Nothing  -> (False, [])
+                     +++++++++++++++++++++++++++++++++++++++++++++++++++++++++
                    }
 
              ; checkErr exportValid (moduleNotImported mod)
