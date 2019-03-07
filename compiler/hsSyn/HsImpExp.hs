@@ -68,7 +68,7 @@ data ImportDecl pass
       ideclHiding    :: Maybe (Bool, Located [LIE pass]),
                                        -- ^ (True => hiding, names)
       ideclAliases   :: Maybe (Bool, Located (Maybe [LIE pass]))
-                               -- ^ (True => aliases_hiding, names)
+                               -- ^ (True => aliases hiding, names)
                                      -- ^ (Just [] => aliases ()) -- import no L1 names
                                      -- ^ (Nothing => aliases)    -- import all L1 names
     }
@@ -149,7 +149,7 @@ instance (p ~ GhcPass pass,OutputableBndrId p)
         pp_aliases Nothing             = empty
         pp_aliases (Just (False, (L _ Nothing)))    = text "aliases"
         pp_aliases (Just (False, (L _ (Just ies)))) = text "aliases"        <+> ppr_ies ies
-        pp_aliases (Just (True,  (L _ (Just ies)))) = text "aliases_hiding" <+> ppr_ies ies
+        pp_aliases (Just (True,  (L _ (Just ies)))) = text "aliases hiding" <+> ppr_ies ies
         pp_aliases (Just (True,  (L _ Nothing)))    = text "__impossible_aliases_AST__"
 
         ppr_ies []  = text "()"
@@ -245,7 +245,7 @@ data IE pass
 
 data L1Exports
   = L1All                                   -- ^ 'module X.Y.Z aliases', wildcard level-1 multi-exports
-  | L1Hiding Bool [(Located ModuleName)]    -- ^ 'module X.Y.Z aliases/aliases_hiding (..)'
+  | L1Hiding Bool [(Located ModuleName)]    -- ^ 'module X.Y.Z aliases/aliases hiding (..)'
   deriving (Eq, Data)
 
 type instance XIEVar             (GhcPass _) = NoExt
@@ -321,9 +321,9 @@ replaceLWrappedName (L l n) n' = L l (replaceWrappedName n n')
 instance Outputable L1Exports where
     ppr = let pph xs = parens $ fsep $ punctuate comma $ map (ppr . unLoc) xs
       in \case
-      L1All             -> text "aliases"
+      L1All             -> text "aliases (..)"
       L1Hiding False xs -> text "aliases"        <+> pph xs
-      L1Hiding True  xs -> text "aliases_hiding" <+> pph xs
+      L1Hiding True  xs -> text "aliases hiding" <+> pph xs
         
 
 instance (p ~ GhcPass pass,OutputableBndrId p) => Outputable (IE p) where

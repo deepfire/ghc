@@ -92,7 +92,7 @@ import Util             ( looksLikePackageName, fstOf3, sndOf3, thdOf3 )
 import GhcPrelude
 }
 
-%expect 246 -- shift/reduce conflicts
+%expect 241 -- shift/reduce conflicts
 
 {- Last updated: 04 June 2018
 
@@ -503,7 +503,6 @@ are the most common patterns, rewritten as regular expressions for clarity:
  'anyclass'     { L _ ITanyclass } -- for DerivingStrategies extension
  'via'          { L _ ITvia }      -- for DerivingStrategies extension
  'aliases'      { L _ ITaliases }
- 'aliases_hiding'      { L _ ITaliases_hiding }
 
  'unit'         { L _ ITunit }
  'signature'    { L _ ITsignature }
@@ -887,9 +886,8 @@ export  :: { OrdList (LIE GhcPs) }
                                              [mj AnnPattern $1] }
         | 'aliases' m_aliases_limit  {% amsu (sLL $1 $> (IEAliases noExt $2))
                                              [] }
-        | 'aliases_hiding' '(' names_l1 ')'
-                                     {% amsu (sLL $1 $> (IEAliases noExt
-                                             (sLL $2 $> (L1Hiding True $3))))
+        | 'aliases' 'hiding' '(' names_l1 ')' {% amsu (sLL $1 $> (IEAliases noExt
+                                                          (sLL $3 $> (L1Hiding True $4))))
                                              [] }
 
 export_subspec :: { Located ([AddAnn],ImpExpSubSpec) }
@@ -1038,15 +1036,15 @@ maybealiases :: { Located (Maybe (Bool, Located (Maybe [LIE GhcPs]))) }
         | {- empty -}              { noLoc Nothing }
 
 aliasesspec :: { Located (Bool, Located (Maybe [LIE GhcPs])) }
-        :  'aliases'                           {% ams (sLL $1 $> (False,
-                                                      sLL $1 $> $ Nothing))
-                                                   [] }
-        |  'aliases'        '(' exportlist ')' {% ams (sLL $1 $> (False,
-                                                      sLL $1 $> $ Just (fromOL $3)))
-                                                   [mop $2,mcp $4] }
-        |  'aliases_hiding' '(' exportlist ')' {% ams (sLL $1 $> (True,
-                                                      sLL $1 $> $ Just (fromOL $3)))
-                                                   [mj AnnAliasesHiding $1,mop $2,mcp $4] }
+        :  'aliases'                             {% ams (sLL $1 $> (False,
+                                                         sLL $1 $> $ Nothing))
+                                                        [] }
+        |  'aliases'          '(' exportlist ')' {% ams (sLL $1 $> (False,
+                                                         sLL $1 $> $ Just (fromOL $3)))
+                                                        [mop $2,mcp $4] }
+        |  'aliases' 'hiding' '(' exportlist ')' {% ams (sLL $1 $> (True,
+                                                         sLL $1 $> $ Just (fromOL $4)))
+                                                        [mj AnnAliasesHiding $1,mop $3,mcp $5] }
 
 -----------------------------------------------------------------------------
 -- Fixity Declarations
@@ -3667,7 +3665,6 @@ special_id
         | 'dependency'          { sL1 $1 (fsLit "dependency") }
         | 'signature'           { sL1 $1 (fsLit "signature") }
         | 'aliases'             { sL1 $1 (fsLit "aliases") }
-        | 'aliases_hiding'      { sL1 $1 (fsLit "aliases_hiding") }
 
 special_sym :: { Located FastString }
 special_sym : '!'       {% ams (sL1 $1 (fsLit "!")) [mj AnnBang $1] }

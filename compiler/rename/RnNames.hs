@@ -337,7 +337,7 @@ rnImportDecl this_mod
     -- XXX XStructuredImports: maybe honor missingImportListWarn for level-1's
     case imp_details_l1 of
         Just (True, unLoc -> Nothing) ->
-          (addErr (text "An aliases_hiding import entry must specify omissions: " <+> ppr imp_mod_name))
+          (addErr (text "An 'aliases hiding' import entry must specify omissions: " <+> ppr imp_mod_name))
         _ -> return ()
 
     iface <- loadSrcInterface doc imp_mod_name want_boot (fmap sl_fs mb_pkg)
@@ -382,7 +382,8 @@ rnImportDecl this_mod
 
     let
         mi_level1_structure   = groupAvailsL1 $
-          trace ("imp-mod-exports of "++show imp_mod_name++": "++show (mi_exports_l1 iface)) mi_exports_l1 iface
+          -- trace ("imp-mod-exports of "++show imp_mod_name++": "++show (mi_exports_l1 iface))
+          mi_exports_l1 iface
         level1_imports :: ModuleNameEnv (ModuleName, [AvailInfo])
         level1_imports        = opUFM mi_level1_structure argUFM
           where (opUFM, argUFM) =
@@ -437,7 +438,8 @@ rnImportDecl this_mod
             }
           | l1name <- level1_names ]
         imports = calculateAvails dflags iface mod_safe' want_boot
-          (trace ("imports due to "++show level1_names++": "++show imbys) imbys)
+          (--trace ("imports due to "++show level1_names++": "++show imbys)
+           imbys)
 
     -- Complain if we import a deprecated module
     whenWOptM Opt_WarnWarningsDeprecations (

@@ -1,7 +1,9 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE StandaloneDeriving, TypeSynonymInstances, FlexibleInstances #-}
@@ -268,18 +270,18 @@ exports_from_avail Nothing rdr_env _imports _this_mod
 exports_from_avail (Just (dL->L _ rdr_items)) rdr_env imports this_mod
   = do ie_avails <- accumExports do_litem rdr_items
        let final_exports    = nubAvails   (concat (map (fst . snd) ie_avails)) -- Combine families
-           final_exports_l1 = nubAvailsL1 (concat (map (snd . snd) ie_avails)) 
+           final_exports_l1 = nubAvailsL1 (concat (map (snd . snd) ie_avails))
        return (Just ie_avails, (final_exports, final_exports_l1))
   where
     do_litem :: ExportAccum -> LIE GhcPs
              -> RnM (Maybe (ExportAccum, (LIE GhcRn, (Avails, [(ModuleName, AvailInfo)]))))
     do_litem acc lie = setSrcSpan (getLoc lie) $ do
         xs <- exports_from_item acc lie
-        pure (trace (mesg xs) xs)
-          where mesg xs = "exports due to "++show (unLoc lie)++": "++
-                  case xs of
-                    Nothing -> "nil"
-                    Just (acc, (lie, (avs, xs))) -> show avs++show xs
+        pure xs -- (trace (mesg xs) xs)
+          -- where mesg xs = "exports due to "++show (unLoc lie)++": "++
+          --         case xs of
+          --           Nothing -> "nil"
+          --           Just (acc, (lie, (avs, xs))) -> show avs++show xs
 
     -- Maps a parent to its in-scope children
     kids_env :: NameEnv [GlobalRdrElt]
@@ -295,10 +297,23 @@ exports_from_avail (Just (dL->L _ rdr_items)) rdr_env imports this_mod
                        | xs <- moduleEnvElts $ imp_mods imports
                        , imv <- importedByUser xs ]
 
-    imported_level1 :: UniqSet ModuleName
-    imported_level1 = mkUniqSet $ filter moduleNameDotty imported_modules
-        -- Note, that this also includes non-"aliases",
-        -- in form of single-element module names.
+    level1_gres :: ModuleNameEnv (ModuleName, [GlobalRdrElt])
+      -- Note, that this also includes non-"aliases",
+      -- in form of single-element module names.
+      -- XXX: wasteful!
+    level1_gres = foldl' addImportL1s emptyUFM [ imv
+                                               | xs <- moduleEnvElts $ imp_mods imports
+                                               , imv <- importedByUser xs
+                                               , not $ moduleNameDotty $ imv_name imv ]
+      where add (mod, gres) gres' = (mod, gres' ++ gres)
+            addImportL1s :: ModuleNameEnv (ModuleName, [GlobalRdrElt])
+                         -> ImportedModsVal
+                         -> ModuleNameEnv (ModuleName, [GlobalRdrElt])
+            addImportL1s env ImportedModsVal{..} = -- addL1 env (mod, av) =
+              addToUFM_Acc (flip add) (add (imv_name, [])) env imv_name (concat $ occEnvElts $ imv_all_exports)
+    level1 :: ModuleNameEnv (ModuleName, [GlobalRdrElt], [AvailInfo])
+    level1 = flip mapUFM level1_gres $
+      \(mod, gres)-> (mod, gres, availFromGRE <$> gres)
 
     exports_from_item :: ExportAccum -> LIE GhcPs
                       -> RnM (Maybe (ExportAccum, (LIE GhcRn, (Avails, [(ModuleName, AvailInfo)]))))
@@ -307,19 +322,21 @@ exports_from_avail (Just (dL->L _ rdr_items)) rdr_env imports this_mod
         = do { let { gre_prs = globalRdrEnvElts rdr_env
                    ; mods    = earlier_mods -- XXX: deal with duplicates
                    ; occs'   = occs         -- XXX: deal with conflicts
-                   ; exports_level1 :: [(ModuleName, AvailInfo)]
-                   ; exports_level1 = undefined
+                   ; exports_level1 :: [(ModuleName, [GlobalRdrElt], [AvailInfo])]
+                   ; exports_level1 = eltsUFM $
                    -- XXX: the concat is probably slightly horrendous
-                   -- ; exports_level1 = concat $ eltsUFM $
-                   --                    operand1UFM `opUFM` operand2UFM where
-                   --     (opUFM, operand1UFM, operand2UFM) = case l1exps of
-                   --       L1All    -> (,,)        const all_level1_names emptyUFM
-                   --       L1Hiding hiding xs ->
-                   --         let moduleNameSetOperand2 = trivialUFM $ unLoc <$> xs
-                   --         in if hiding
-                   --         then      (,,)     minusUFM all_level1_names moduleNameSetOperand2
-                   --         else      (,,) intersectUFM all_level1_names moduleNameSetOperand2
+                                      operand1UFM `opUFM` operand2UFM where
+                       (opUFM, operand1UFM, operand2UFM) = case l1names of
+                         L1All    -> (,,)        const level1 emptyUFM
+                         L1Hiding hiding xs ->
+                           let moduleNameSetOperand2 = trivialUFM $ unLoc <$> xs
+                           in if hiding
+                           then      (,,)     minusUFM level1 moduleNameSetOperand2
+                           else      (,,) intersectUFM level1 moduleNameSetOperand2
+                   ; used_gres = concat $ (\(_,x,_) -> x) <$> exports_level1
+                   ; avails_level1 = concat $ (\(mod, _, avs) -> (mod,) <$> avs) <$> exports_level1
                    }
+             ; addUsedGREs used_gres
 
              ; traceRn "export_l1"
                        (vcat [ ppr l1names
@@ -328,7 +345,7 @@ exports_from_avail (Just (dL->L _ rdr_items)) rdr_env imports this_mod
 
              ; return (Just ( ExportAccum occs' mods
                             , ( cL loc (IEAliases noExt l1e)
-                              , ( [], exports_level1 )))) }
+                              , ( [], avails_level1 )))) }
 
     exports_from_item (ExportAccum occs earlier_mods)
                       (dL->L loc ie@(IEModuleContents _ lmod@(dL->L _ mod)))

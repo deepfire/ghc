@@ -2168,7 +2168,7 @@ names). For example:
 
       import B aliases (R)           -- Only bring the R alias into scope.
 
-      import B aliases_hiding (R)    -- Only bring the N alias into scope.
+      import B aliases hiding (R)    -- Only bring the N alias into scope.
 
 .. _block-arguments:
 
