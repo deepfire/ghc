@@ -8,6 +8,7 @@
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE StandaloneDeriving #-}
 
 -- | Types for the per-module compiler
 module HscTypes (
@@ -1272,6 +1273,9 @@ emptyModDetails
 -- | Records the modules directly imported by a module for extracting e.g.
 -- usage information, and also to give better error message
 type ImportedMods = ModuleEnv [ImportedBy]
+
+deriving instance Show ImportedBy
+deriving instance Show ImportedModsVal
 
 -- | If a module was "imported" by the user, we associate it with
 -- more detailed usage information 'ImportedModsVal'; a module

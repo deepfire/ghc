@@ -72,6 +72,9 @@ data AvailInfo
 
    deriving ( Eq    -- ^ Used when deciding if the interface has changed
             , Data )
+instance Show AvailInfo where
+  show (Avail x) = "av:"++show x
+  show (AvailTC x _ _) = "avTC:"++show x
 
 -- | A collection of 'AvailInfo' - several things that are \"available\"
 type Avails = [AvailInfo]

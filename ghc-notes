@@ -1,0 +1,64 @@
+#!/bin/sh
+
+note_occs_legacy () {
+        ag -- '--[ ]+Note[ ]+\['
+}
+
+note_occs () {
+        ag -- 'Note[ ]+\[.*\]'
+}
+
+note_defs () {
+        ag -- 'Note[ ]+\[.*\]$\n.*~~~~~~~' | fgrep -v '~~~~~~~'
+}
+source=note_defs
+
+occs_to_org_links () {
+        sed 's/^\([^:]*\):[0-9]\+:\(.*\)$/file:\1::\2/'
+}
+
+extract_names () {
+        sed 's/^.*Note[ ]\+\[\([^]]*\)\].*$/\1/' | sort | uniq
+}
+
+org_links_to_org_list () {
+        read line
+        while test -n "$line"
+        do ref="$(echo $line | sed 's_ _%20_g; s_\[_%5B_g; s_\]_%5D_g; ')"
+           desc="$(echo "$line" | sed 's,^file:\(compiler/\|libraries/Cabal/\|libraries/\|\)\(.*\)::.*Note[ ]\+\[\([^]]*\)\].*$,\3,' | tr -d '[]')"
+           path="$(echo "$line" | sed 's,^file:\(compiler/\|libraries/Cabal/\|libraries/\|\)\(.*\)::.*Note[ ]\+\[\([^]]*\)\].*$,\2,')"
+           printf "  - [[%s][%-50s]]%s\n" "$ref" "$desc" "$path"
+           read line
+        done | sed 's,^\(.*[^ ]\)\([ ]*\)]]\(.*\)$,\1]]\2\3,'
+}
+
+filter () {
+        grep -v \
+"\
+integer-simple/GHC\|\
+utils/haddock/\|\
+cmm/\|\
+ghci/\|\
+template-haskell/\|\
+parser/\|\
+cabal-install/\|\
+testsuite/\|\
+boring-last-never"
+# llvmGen/\|\
+# codeGen/\|\
+              
+}
+
+cmd=${1:-raw}
+
+case ${cmd} in
+        raw-defs          ) note_defs;;
+        raw-legacy        ) note_occs_legacy;;
+        raw               ) note_occs;;
+        org-links         ) note_defs | occs_to_org_links;;
+        org-list          ) note_defs | occs_to_org_links | org_links_to_org_list          | sort;;
+        org-list-filtered ) note_defs | occs_to_org_links | org_links_to_org_list | filter | sort;;
+        filter            ) filter;;
+        names             ) note_defs | extract_names;;
+        * ) echo "ERROR: unknown command: ${cmd}" >&2; exit 1;;
+esac

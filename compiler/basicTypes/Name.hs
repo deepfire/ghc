@@ -113,6 +113,8 @@ data Name = Name {
                 n_uniq :: {-# UNPACK #-} !Unique,
                 n_loc  :: !SrcSpan      -- Definition site
             }
+instance Show Name where
+  show name = "name:"++show (nameOccName name)
 
 -- NOTE: we make the n_loc field strict to eliminate some potential
 -- (and real!) space leaks, due to the fact that we don't look at

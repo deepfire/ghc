@@ -477,6 +477,11 @@ filterOccSet      = filterUniqSet
 *                                                                      *
 ************************************************************************
 -}
+instance Show OccName where
+  show (OccName VarName x)   = "occV:"++unpackFS x
+  show (OccName DataName x)  = "occD:"++unpackFS x
+  show (OccName TvName x)    = "occTv:"++unpackFS x
+  show (OccName TcClsName x) = "occTc:"++unpackFS x
 
 occNameString :: OccName -> String
 occNameString (OccName _ s) = unpackFS s

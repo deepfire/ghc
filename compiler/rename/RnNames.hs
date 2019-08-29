@@ -9,6 +9,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE StandaloneDeriving, FlexibleContexts, TypeSynonymInstances, FlexibleInstances #-}
 
 module RnNames (
         rnImports, getLocalNonValBinders, newRecordSelector,
@@ -65,6 +66,7 @@ import qualified GHC.LanguageExtensions as LangExt
 import Control.Applicative ((<|>))
 import Control.Monad
 import Data.Either      ( partitionEithers, isRight, rights )
+import Debug.Trace      ( trace )
 import Data.Map         ( Map )
 import qualified Data.Map as Map
 import Data.Ord         ( comparing )
@@ -165,6 +167,20 @@ with yes we have gone with no for now.
 -- the return types represent.
 -- Note: Do the non SOURCE ones first, so that we get a helpful warning
 -- for SOURCE ones that are unnecessary
+instance Show a => Show (ModuleEnv a) where
+  show xs = "(ModEnv "++intercalate " " (show <$> moduleEnvElts xs)++")"
+deriving instance Show (IE GhcPs)
+deriving instance Show (IEWrappedName RdrName)
+deriving instance Show (FieldLbl RdrName)
+deriving instance Show RdrName
+deriving instance Show NoExtCon
+deriving instance Show NoExtField
+deriving instance Show Module
+deriving instance Show IEWildcard
+deriving instance Show IEAliases
+instance Show x => Show (Located x) where
+  show x = show $ unLoc x
+
 rnImports :: [LImportDecl GhcPs]
           -> RnM ([LImportDecl GhcRn], GlobalRdrEnv, ImportAvails, AnyHpcUsage)
 rnImports imports = do

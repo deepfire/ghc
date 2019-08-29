@@ -6,6 +6,7 @@
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE StandaloneDeriving, TypeSynonymInstances, FlexibleInstances #-}
 
 module TcRnExports (tcRnExports, exports_from_avail) where
 
@@ -220,6 +221,10 @@ tcRnExports explicit_mod exports
                                       usesOnly final_ns }
         ; failIfErrsM
         ; return new_tcg_env }
+
+deriving instance Show (IE GhcRn)
+deriving instance Show (IEWrappedName Name)
+deriving instance Show (FieldLbl Name)
 
 exports_from_avail :: Maybe (Located [LIE GhcPs])
                          -- ^ 'Nothing' means no explicit export list
