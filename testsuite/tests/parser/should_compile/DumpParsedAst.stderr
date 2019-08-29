@@ -19,6 +19,7 @@
      (NotQualified)
      (False)
      (Nothing)
+     (Nothing)
      (Nothing)))]
   [({ DumpParsedAst.hs:7:1-30 }
     (TyClD

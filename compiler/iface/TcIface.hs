@@ -174,6 +174,7 @@ typecheckIface iface
 
                 -- Exports
         ; exports <- ifaceExportNames (mi_exports iface)
+        ; exports_aliases <- ifaceExportNamesAliases (mi_exports_aliases iface)
 
                 -- Complete Sigs
         ; complete_sigs <- tcIfaceCompleteSigs (mi_complete_sigs iface)
@@ -190,6 +191,7 @@ typecheckIface iface
                               , md_rules     = rules
                               , md_anns      = anns
                               , md_exports   = exports
+                              , md_exports_aliases = exports_aliases
                               , md_complete_sigs = complete_sigs
                               }
     }
@@ -389,6 +391,7 @@ typecheckIfacesForMerging mod ifaces tc_env_var =
         rules     <- tcIfaceRules ignore_prags (mi_rules iface)
         anns      <- tcIfaceAnnotations (mi_anns iface)
         exports   <- ifaceExportNames (mi_exports iface)
+        exports_aliases <- ifaceExportNamesAliases (mi_exports_aliases iface)
         complete_sigs <- tcIfaceCompleteSigs (mi_complete_sigs iface)
         return $ ModDetails { md_types     = type_env
                             , md_insts     = insts
@@ -396,6 +399,7 @@ typecheckIfacesForMerging mod ifaces tc_env_var =
                             , md_rules     = rules
                             , md_anns      = anns
                             , md_exports   = exports
+                            , md_exports_aliases = exports_aliases
                             , md_complete_sigs = complete_sigs
                             }
     return (global_type_env, details)
@@ -428,6 +432,7 @@ typecheckIfaceForInstantiate nsubst iface =
     rules     <- tcIfaceRules ignore_prags (mi_rules iface)
     anns      <- tcIfaceAnnotations (mi_anns iface)
     exports   <- ifaceExportNames (mi_exports iface)
+    exports_aliases <- ifaceExportNamesAliases (mi_exports_aliases iface)
     complete_sigs <- tcIfaceCompleteSigs (mi_complete_sigs iface)
     return $ ModDetails { md_types     = type_env
                         , md_insts     = insts
@@ -435,6 +440,7 @@ typecheckIfaceForInstantiate nsubst iface =
                         , md_rules     = rules
                         , md_anns      = anns
                         , md_exports   = exports
+                        , md_exports_aliases = exports_aliases
                         , md_complete_sigs = complete_sigs
                         }
 

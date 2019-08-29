@@ -135,6 +135,7 @@ Plan A: mkBootModDetails: omit pragmas, make interfaces small
 mkBootModDetailsTc :: HscEnv -> TcGblEnv -> IO ModDetails
 mkBootModDetailsTc hsc_env
         TcGblEnv{ tcg_exports          = exports,
+                  tcg_exports_aliases  = exports_aliases,
                   tcg_type_env         = type_env, -- just for the Ids
                   tcg_tcs              = tcs,
                   tcg_patsyns          = pat_syns,
@@ -154,6 +155,7 @@ mkBootModDetailsTc hsc_env
                        , md_rules         = []
                        , md_anns          = []
                        , md_exports       = exports
+                       , md_exports_aliases = exports_aliases
                        , md_complete_sigs = complete_sigs
                        })
   where
@@ -325,6 +327,7 @@ RHSs, so that they print nicely in interfaces.
 tidyProgram :: HscEnv -> ModGuts -> IO (CgGuts, ModDetails)
 tidyProgram hsc_env  (ModGuts { mg_module    = mod
                               , mg_exports   = exports
+                              , mg_exports_aliases = exports_aliases
                               , mg_rdr_env   = rdr_env
                               , mg_tcs       = tcs
                               , mg_insts     = cls_insts
@@ -443,6 +446,7 @@ tidyProgram hsc_env  (ModGuts { mg_module    = mod
                                 md_insts     = tidy_cls_insts,
                                 md_fam_insts = fam_insts,
                                 md_exports   = exports,
+                                md_exports_aliases = exports_aliases,
                                 md_anns      = anns,      -- are already tidy
                                 md_complete_sigs = complete_sigs
                               })

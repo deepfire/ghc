@@ -135,7 +135,8 @@ mkPrelImports this_mod loc implicit_prelude import_decls
                                 ideclQualified = NotQualified,
                                 ideclImplicit  = True,   -- Implicit!
                                 ideclAs        = Nothing,
-                                ideclHiding    = Nothing  }
+                                ideclHiding    = Nothing,
+                                ideclAliases   = Nothing  }
 
 --------------------------------------------------------------
 -- Get options

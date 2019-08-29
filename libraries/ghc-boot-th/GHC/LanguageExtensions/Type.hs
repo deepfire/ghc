@@ -142,4 +142,5 @@ data Extension
    | StarIsType
    | ImportQualifiedPost
    | CUSKs
+   | StructuredImports
    deriving (Eq, Enum, Show, Generic, Bounded)

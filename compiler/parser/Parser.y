@@ -93,7 +93,7 @@ import Util             ( looksLikePackageName, fstOf3, sndOf3, thdOf3 )
 import GhcPrelude
 }
 
-%expect 236 -- shift/reduce conflicts
+%expect 241 -- shift/reduce conflicts
 
 {- Last updated: 04 June 2018
 
@@ -503,6 +503,7 @@ are the most common patterns, rewritten as regular expressions for clarity:
  'stock'        { L _ ITstock }    -- for DerivingStrategies extension
  'anyclass'     { L _ ITanyclass } -- for DerivingStrategies extension
  'via'          { L _ ITvia }      -- for DerivingStrategies extension
+ 'aliases'      { L _ ITaliases }
 
  'unit'         { L _ ITunit }
  'signature'    { L _ ITsignature }
@@ -883,6 +884,11 @@ export  :: { OrdList (LIE GhcPs) }
                                              [mj AnnModule $1] }
         |  'pattern' qcon            {% amsu (sLL $1 $> (IEVar noExtField (sLL $1 $> (IEPattern $2))))
                                              [mj AnnPattern $1] }
+        | 'aliases' m_aliases_limit  {% amsu (sLL $1 $> (IEAliases noExtField $2))
+                                             [] }
+        | 'aliases' 'hiding' '(' names_aliases ')' {% amsu (sLL $1 $> (IEAliases noExtField
+                                                          (sLL $3 $> (IEAliasesHiding True $4))))
+                                             [] }
 
 export_subspec :: { Located ([AddAnn],ImpExpSubSpec) }
         : {- empty -}             { sL0 ([],ImpExpAbs) }
@@ -890,6 +896,13 @@ export_subspec :: { Located ([AddAnn],ImpExpSubSpec) }
                                       >>= \(as,ie) -> return $ sLL $1 $>
                                             (as ++ [mop $1,mcp $3] ++ fst $2, ie) }
 
+m_aliases_limit :: { Located IEAliases }
+        : '(' '..'     ')'        { sLL $1 $>  IEAliasesAll }
+        | '(' names_aliases ')'   { sLL $1 $> (IEAliasesHiding False $2) }
+
+names_aliases :: { [Located ModuleName] }
+        : modid              { [$1] }
+        | modid ',' names_aliases { $1 : $3 }
 
 qcnames :: { ([AddAnn], [Located ImpExpQcSpec]) }
   : {- empty -}                   { ([],[]) }
@@ -956,7 +969,7 @@ importdecls_semi
         | {- empty -}           { [] }
 
 importdecl :: { LImportDecl GhcPs }
-        : 'import' maybe_src maybe_safe optqualified maybe_pkg modid optqualified maybeas maybeimpspec
+        : 'import' maybe_src maybe_safe optqualified maybe_pkg modid optqualified maybeas maybeimpspec maybealiases
                 {% do {
                   ; checkImportDecl $4 $7
                   ; ams (cL (comb4 $1 $6 (snd $8) $9) $
@@ -967,7 +980,8 @@ importdecl :: { LImportDecl GhcPs }
                                   , ideclQualified = importDeclQualifiedStyle $4 $7
                                   , ideclImplicit = False
                                   , ideclAs = unLoc (snd $8)
-                                  , ideclHiding = unLoc $9 })
+                                  , ideclHiding = unLoc $9
+                                  , ideclAliases = unLoc $10 })
                          ((mj AnnImport $1 : fst (fst $2) ++ fst $3 ++ fmap (mj AnnQualified) (maybeToList $4)
                                           ++ fst $5 ++ fmap (mj AnnQualified) (maybeToList $7) ++ fst $8))
                   }
@@ -1015,6 +1029,27 @@ impspec :: { Located (Bool, Located [LIE GhcPs]) }
         |  'hiding' '(' exportlist ')'      {% ams (sLL $1 $> (True,
                                                       sLL $1 $> $ fromOL $3))
                                                [mj AnnHiding $1,mop $2,mcp $4] }
+
+maybealiases :: { Located (Maybe (Bool, Located (Maybe [LIE GhcPs]))) }
+        : aliasesspec              {% let (b, mie) = unLoc $1 in
+                                      case unLoc mie of
+                                        Nothing -> return (cL (gl $1) (Just (b, noLoc Nothing)))
+                                        Just ie ->
+                                          checkImportSpec (sL1 $1 ie)
+                                            >>= \checkedIe ->
+                                              return (cL (gl $1) (Just (b, cL (gl checkedIe) $ Just (unLoc checkedIe))))  }
+        | {- empty -}              { noLoc Nothing }
+
+aliasesspec :: { Located (Bool, Located (Maybe [LIE GhcPs])) }
+        :  'aliases'                             {% ams (sLL $1 $> (False,
+                                                         sLL $1 $> $ Nothing))
+                                                        [] }
+        |  'aliases'          '(' exportlist ')' {% ams (sLL $1 $> (False,
+                                                         sLL $1 $> $ Just (fromOL $3)))
+                                                        [mop $2,mcp $4] }
+        |  'aliases' 'hiding' '(' exportlist ')' {% ams (sLL $1 $> (True,
+                                                         sLL $1 $> $ Just (fromOL $4)))
+                                                        [mj AnnAliasesHiding $1,mop $3,mcp $5] }
 
 -----------------------------------------------------------------------------
 -- Fixity Declarations
@@ -3658,6 +3693,7 @@ special_id
         | 'unit'                { sL1 $1 (fsLit "unit") }
         | 'dependency'          { sL1 $1 (fsLit "dependency") }
         | 'signature'           { sL1 $1 (fsLit "signature") }
+        | 'aliases'             { sL1 $1 (fsLit "aliases") }
 
 special_sym :: { Located FastString }
 special_sym : '!'       {% ams (sL1 $1 (fsLit "!")) [mj AnnBang $1] }

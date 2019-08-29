@@ -645,6 +645,7 @@
      (NotQualified)
      (True)
      (Nothing)
+     (Nothing)
      (Nothing)))
   ,({ DumpRenamedAst.hs:5:1-16 }
     (ImportDecl
@@ -657,6 +658,7 @@
      (False)
      (NotQualified)
      (False)
+     (Nothing)
      (Nothing)
      (Nothing)))
   ,({ DumpRenamedAst.hs:7:1-23 }
@@ -681,7 +683,8 @@
            ({ DumpRenamedAst.hs:7:19-22 }
             (IEName
              ({ DumpRenamedAst.hs:7:19-22 }
-              {Name: GHC.Types.Type})))))])))))]
+              {Name: GHC.Types.Type})))))])))
+     (Nothing)))]
   (Nothing)
   (Nothing)))
 

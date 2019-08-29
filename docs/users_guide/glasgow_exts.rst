@@ -2220,6 +2220,67 @@ It is an error if ``qualified`` appears in both pre and postpositive positions.
 
 The warning ``-Wprepositive-qualified-syntax`` (off by default) reports on any occurrences of imports annotated ``qualified`` using prepositive syntax.
 
+Structured imports
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. extension:: StructuredImports
+    :shortdesc: Enable import/export of level-1 names (module aliases).
+
+    :since: 8.10
+
+    Allow export, re-export and import of module aliases (hereby referred to as
+    level-1 names, in contrast with level-0 names otherwise only being
+    subject to import/export).
+
+.. note:: This is not a syntax-only extension, as it extends operational aspects
+   of the module interface files.  Maybe this belongs to a section of its own.
+
+With the :extension:`StructuredImports` extension, GHC extends the module export
+and import declarations to allow inter-module passing of module aliases (*level-1*
+names). For example:
+
+  * interface module::
+
+      module B
+        ( module E.F.G as EFG        -- The entire set if E.F.G's names in scope will be available for import via the alias.
+
+        , module H.I.J as HIJ (hijA) -- Only the specified name will be available for import via the alias.
+
+        , module C     aliases       -- Re-export of all of the names available through all of the aliases available from C,
+                                     -- to be made available for import via the respective aliases.
+                                     -- Basically forward the entire structure exposed by C -- both the R and N aliases.
+
+        , module C     aliases (R)   -- Same as above, but restricted to a single alias:
+                                     -- re-export of the names available from C under R.
+        )
+      where
+      import E.F.G
+      import H.I.J (hijA, hijB, hijC)
+      import C aliases
+
+  * re-exported module::
+
+      module C
+        ( module Z.Y.X.R as R        -- Combining structure into a single level-1 name:
+        , module Z.W     as R        -- make the total sum of names exported by Z.Y.X.R and Z.W under the R alias.
+
+        , module Z.W     as N        -- Make the names exported by Z.W also available under the N alias.
+        )
+      where
+      import Z.Y.X.R
+      import Z.W
+
+  * user module::
+
+      module A
+      where
+
+      import B aliases               -- Bring all aliases initially exported by C into scope (R and N).
+
+      import B aliases (R)           -- Only bring the R alias into scope.
+
+      import B aliases hiding (R)    -- Only bring the N alias into scope.
+
 .. _block-arguments:
 
 More liberal syntax for function arguments

@@ -1068,6 +1068,7 @@ type family XIEThingAbs        x
 type family XIEThingAll        x
 type family XIEThingWith       x
 type family XIEModuleContents  x
+type family XIEAliases         x
 type family XIEGroup           x
 type family XIEDoc             x
 type family XIEDocNamed        x
@@ -1079,6 +1080,7 @@ type ForallXIE (c :: * -> Constraint) (x :: *) =
        , c (XIEThingAll        x)
        , c (XIEThingWith       x)
        , c (XIEModuleContents  x)
+       , c (XIEAliases         x)
        , c (XIEGroup           x)
        , c (XIEDoc             x)
        , c (XIEDocNamed        x)

@@ -527,7 +527,8 @@ data TcGblEnv
                 -- accumulated, but never consulted until the end.
                 -- Nevertheless, it's convenient to accumulate them along
                 -- with the rest of the info from this module.
-        tcg_exports :: [AvailInfo],     -- ^ What is exported
+        tcg_exports    :: [AvailInfo],                     -- ^ What is exported
+        tcg_exports_aliases :: ![(ModuleName, AvailInfo)], -- ^ ..of aliases.
         tcg_imports :: ImportAvails,
           -- ^ Information about what was imported from where, including
           -- things bound in this module. Also store Safe Haskell info
@@ -616,6 +617,7 @@ data TcGblEnv
                 -- exports.
                 -- If present contains each renamed export list item
                 -- together with its exported names.
+        tcg_rn_exports_aliases :: Maybe [(Located (IE GhcRn), [(ModuleName, AvailInfo)])],
 
         tcg_rn_imports :: [LImportDecl GhcRn],
                 -- Keep the renamed imports regardless.  They are not

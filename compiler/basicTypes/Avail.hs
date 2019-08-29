@@ -19,12 +19,14 @@ module Avail (
     availsNamesWithOccs,
     availNamesWithOccs,
     stableAvailCmp,
+    stableAvailCmpAliases,
     plusAvail,
     trimAvail,
     filterAvail,
     filterAvails,
-    nubAvails
-
+    nubAvails,
+    nubAvailsAliases,
+    groupAvailsAliases
 
   ) where
 
@@ -33,11 +35,13 @@ import GhcPrelude
 import Name
 import NameEnv
 import NameSet
+import Module
 
 import FieldLabel
 import Binary
 import ListSetOps
 import Outputable
+import UniqFM
 import Util
 
 import Data.Data ( Data )
@@ -131,6 +135,19 @@ stableAvailCmp (AvailTC n ns nfs) (AvailTC m ms mfs) =
     (cmpList stableNameCmp ns ms) `thenCmp`
     (cmpList (stableNameCmp `on` flSelector) nfs mfs)
 stableAvailCmp (AvailTC {})       (Avail {})     = GT
+
+stableAvailCmpAliases :: (ModuleName, AvailInfo) -> (ModuleName, AvailInfo) -> Ordering
+stableAvailCmpAliases (m1, Avail n1)         (m2, Avail n2)     =
+    (m1 `stableModuleNameCmp` m2) `thenCmp` (n1 `stableNameCmp` n2)
+stableAvailCmpAliases (m1, Avail {})         (m2, AvailTC {})   =
+    (m1 `stableModuleNameCmp` m2) `thenCmp` LT
+stableAvailCmpAliases (m1, AvailTC n ns nfs) (m2, AvailTC m ms mfs) =
+    (m1 `stableModuleNameCmp` m2) `thenCmp`
+    (n  `stableNameCmp` m)        `thenCmp`
+    (cmpList stableNameCmp ns ms) `thenCmp`
+    (cmpList (stableNameCmp `on` flSelector) nfs mfs)
+stableAvailCmpAliases (m1, AvailTC {})       (m2, Avail {})     =
+    (m1 `stableModuleNameCmp` m2) `thenCmp` GT
 
 avail :: Name -> AvailInfo
 avail n = Avail n
@@ -252,6 +269,28 @@ nubAvails :: [AvailInfo] -> [AvailInfo]
 nubAvails avails = nameEnvElts (foldl' add emptyNameEnv avails)
   where
     add env avail = extendNameEnv_C plusAvail env (availName avail) avail
+
+nubAvailsAliases :: [(ModuleName, AvailInfo)] -> [(ModuleName, AvailInfo)]
+nubAvailsAliases aliases_avails = concat $ eltsUFM <$> eltsUFM aliasesMap
+  where
+    aliasesMap :: ModuleNameEnv (NameEnv (ModuleName, AvailInfo))
+    aliasesMap = foldl' addAliases emptyUFM aliases_avails
+    add   env modAvail = extendNameEnv_C plusAvail' env (availName (snd modAvail)) modAvail
+    plusAvail' :: (ModuleName, AvailInfo) -> (ModuleName, AvailInfo) -> (ModuleName, AvailInfo)
+    plusAvail' (m, al) (_, ar) = (m, plusAvail al ar)
+    addAvail :: (ModuleName, AvailInfo)
+             -> NameEnv (ModuleName, AvailInfo)
+    addAvail  modAvail = unitUFM (availName (snd modAvail)) modAvail
+    addAliases    :: ModuleNameEnv (NameEnv (ModuleName, AvailInfo))
+             -> (ModuleName, AvailInfo)
+             -> ModuleNameEnv (NameEnv (ModuleName, AvailInfo))
+    addAliases env modAvail@(mod, _) = addToUFM_Acc (flip add) addAvail env mod modAvail
+
+groupAvailsAliases :: [(ModuleName, AvailInfo)] -> ModuleNameEnv (ModuleName, [AvailInfo])
+groupAvailsAliases aliases_avails = foldl' addAliases emptyUFM aliases_avails
+  where
+    add   (mod, avs) av = (mod, av:avs)
+    addAliases env (mod, av) = addToUFM_Acc (flip add) (add (mod, [])) env mod av
 
 -- -----------------------------------------------------------------------------
 -- Printing

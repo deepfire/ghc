@@ -36,6 +36,7 @@ module UniqFM (
         listToUFM,
         listToUFM_Directly,
         listToUFM_C,
+        trivialUFM,
         addToUFM,addToUFM_C,addToUFM_Acc,
         addListToUFM,addListToUFM_C,
         addToUFM_Directly,
@@ -107,6 +108,9 @@ listToUFM = foldl' (\m (k, v) -> addToUFM m k v) emptyUFM
 
 listToUFM_Directly :: [(Unique, elt)] -> UniqFM elt
 listToUFM_Directly = foldl' (\m (u, v) -> addToUFM_Directly m u v) emptyUFM
+
+trivialUFM :: Uniquable key => [key] -> UniqFM ()
+trivialUFM xs = listToUFM (zip xs $ repeat ())
 
 listToUFM_C
   :: Uniquable key

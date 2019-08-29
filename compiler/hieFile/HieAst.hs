@@ -1756,6 +1756,8 @@ instance ToHie (IEContext (LIE GhcRn)) where
       IEModuleContents _ n ->
         [ toHie $ IEC c n
         ]
+      IEAliases _ l1 ->
+        [ ] -- XXX: needs a somewhat involved lookup
       IEGroup _ _ _ -> []
       IEDoc _ _ -> []
       IEDocNamed _ _ -> []

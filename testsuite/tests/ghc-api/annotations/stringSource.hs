@@ -62,8 +62,8 @@ testOneFile libdir fileName = do
 
      doImportDecl :: ImportDecl GhcPs
                   -> [(String,[Located (SourceText,FastString)])]
-     doImportDecl (ImportDecl _ _ _ Nothing _ _ _ _ _ _) = []
-     doImportDecl (ImportDecl _ _ _ (Just ss) _ _ _ _ _ _)
+     doImportDecl (ImportDecl _ _ _ Nothing _ _ _ _ _ _ _) = []
+     doImportDecl (ImportDecl _ _ _ (Just ss) _ _ _ _ _ _ _)
                                                      = [("i",[conv (noLoc ss)])]
 
      doCType :: CType -> [(String,[Located (SourceText,FastString)])]

@@ -639,7 +639,7 @@ mergeSignatures
                                     emptyImportAvails
                                     (tcg_semantic_mod tcg_env)
                         case mb_r of
-                            Just (_, as2) -> return (thinModIface as2 ireq_iface, as2)
+                            Just (_, (as2, _)) -> return (thinModIface as2 ireq_iface, as2) -- XXX !!!
                             Nothing -> addMessages msgs >> failM
                     -- We can't think signatures from non signature packages
                     _ -> return (ireq_iface, as1)
@@ -696,8 +696,13 @@ mergeSignatures
 
     -- Make sure we didn't refer to anything that doesn't actually exist
     -- pprTrace "mergeSignatures: exports_from_avail" (ppr exports) $ return ()
-    (mb_lies, _) <- exports_from_avail mb_exports rdr_env
-                        (tcg_imports tcg_env) (tcg_semantic_mod tcg_env)
+    (mb_all_lies, _) <- exports_from_avail mb_exports rdr_env
+                             (tcg_imports tcg_env) (tcg_semantic_mod tcg_env)
+    let (mb_lies, mb_lies_aliases) = case mb_all_lies of
+     -- (Maybe [(LIE GhcRn, (Avails, [(ModuleName, AvailInfo)]))], Avails)
+          Nothing -> (,) Nothing Nothing
+          Just lies -> ( Just $ (\(x, (y, _z)) -> (x, y)) <$> lies
+                       , Just $ (\(x, (_y, z)) -> (x, z)) <$> lies)
 
     {- -- NB: This is commented out, because warns above is disabled.
     -- If you tried to explicitly export an identifier that has a warning
@@ -717,7 +722,10 @@ mergeSignatures
     failIfErrsM
 
     -- Save the exports
-    setGblEnv tcg_env { tcg_rn_exports = mb_lies } $ do
+    setGblEnv tcg_env
+      { tcg_rn_exports         = mb_lies
+      , tcg_rn_exports_aliases = mb_lies_aliases
+      } $ do
     tcg_env <- getGblEnv
 
     -- STEP 4: Rename the interfaces
@@ -834,7 +842,7 @@ mergeSignatures
             -- supposed to include itself in its dep_orphs/dep_finsts.  See #13214
             iface' = iface { mi_orphan = False, mi_finsts = False }
             avails = plusImportAvails (tcg_imports tcg_env) $
-                        calculateAvails dflags iface' False False ImportedBySystem
+                        calculateAvails dflags iface' False False [ImportedBySystem]
         return tcg_env {
             tcg_inst_env = inst_env,
             tcg_insts    = insts,
@@ -921,7 +929,7 @@ checkImplements impl_mod req_mod@(IndefModule uid mod_name) =
 
     dflags <- getDynFlags
     let avails = calculateAvails dflags
-                    impl_iface False{- safe -} False{- boot -} ImportedBySystem
+                    impl_iface False{- safe -} False{- boot -} [ImportedBySystem]
         fix_env = mkNameEnv [ (gre_name rdr_elt, FixItem occ f)
                             | (occ, f) <- mi_fixities impl_iface
                             , rdr_elt <- lookupGlobalRdrEnv impl_gr occ ]
