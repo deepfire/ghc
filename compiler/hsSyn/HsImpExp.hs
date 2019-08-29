@@ -89,12 +89,8 @@ data ImportDecl pass
       ideclQualified :: ImportDeclQualifiedStyle, -- ^ If/how the import is qualified.
       ideclImplicit  :: Bool,          -- ^ True => implicit import (of Prelude)
       ideclAs        :: Maybe (Located ModuleName),  -- ^ as Module
-      ideclHiding    :: Maybe (Bool, Located [LIE pass]),
+      ideclHiding    :: Maybe (Bool, Located [LIE pass])
                                        -- ^ (True => hiding, names)
-      ideclAliases   :: Maybe (Bool, Located (Maybe [LIE pass]))
-                               -- ^ (True => aliases hiding, names)
-                                     -- ^ (Just [] => aliases ()) -- import no aliases
-                                     -- ^ (Nothing => aliases)    -- import all aliases
     }
   | XImportDecl (XXImportDecl pass)
      -- ^
@@ -128,8 +124,7 @@ simpleImportDecl mn = ImportDecl {
       ideclImplicit  = False,
       ideclQualified = NotQualified,
       ideclAs        = Nothing,
-      ideclHiding    = Nothing,
-      ideclAliases   = Nothing
+      ideclHiding    = Nothing
     }
 
 instance (p ~ GhcPass pass,OutputableBndrId p)
@@ -139,11 +134,10 @@ instance (p ~ GhcPass pass,OutputableBndrId p)
                     , ideclSource = from, ideclSafe = safe
                     , ideclQualified = qual, ideclImplicit = implicit
                     , ideclAs = as
-                    , ideclHiding = spec
-                    , ideclAliases = aliases_spec })
+                    , ideclHiding = spec })
       = hang (hsep [text "import", ppr_imp from, pp_implicit implicit, pp_safe safe,
                     pp_qual qual False, pp_pkg pkg, ppr mod', pp_qual qual True, pp_as as])
-             4 (hsep [pp_spec spec, pp_aliases aliases_spec])
+             4 (hsep [pp_spec spec])
       where
         pp_implicit False = empty
         pp_implicit True = ptext (sLit ("(implicit)"))
@@ -172,12 +166,6 @@ instance (p ~ GhcPass pass,OutputableBndrId p)
         pp_spec Nothing             = empty
         pp_spec (Just (False, (L _ ies))) = ppr_ies ies
         pp_spec (Just (True, (L _ ies))) = text "hiding" <+> ppr_ies ies
-
-        pp_aliases Nothing             = empty
-        pp_aliases (Just (False, (L _ Nothing)))    = text "aliases"
-        pp_aliases (Just (False, (L _ (Just ies)))) = text "aliases"        <+> ppr_ies ies
-        pp_aliases (Just (True,  (L _ (Just ies)))) = text "aliases hiding" <+> ppr_ies ies
-        pp_aliases (Just (True,  (L _ Nothing)))    = text "__impossible_aliases_AST__"
 
         ppr_ies []  = text "()"
         ppr_ies ies = char '(' <+> interpp'SP ies <+> char ')'
@@ -264,23 +252,22 @@ data IE pass
         -- - 'ApiAnnotation.AnnKeywordId's : 'ApiAnnotation.AnnModule'
 
         -- For details on above see note [Api annotations] in ApiAnnotation
-  | IEAliases           (XIEAliases pass) (Located IEAliases)
+
+  | IEModuleContentsQualified  (XIEModuleContents pass) (Located ModuleName)
+        -- ^ Imported or exported qualified module contents
+        --
+        -- (Import and export)
+
   | IEGroup             (XIEGroup pass) Int HsDocString -- ^ Doc section heading
   | IEDoc               (XIEDoc pass) HsDocString       -- ^ Some documentation
   | IEDocNamed          (XIEDocNamed pass) String    -- ^ Reference to named doc
   | XIE (XXIE pass)
-
-data IEAliases
-  = IEAliasesAll                                        -- ^ 'module X.Y.Z aliases', wildcard level-1 multi-exports
-  | IEAliasesHiding Bool [(Located ModuleName)]         -- ^ 'module X.Y.Z aliases/aliases hiding (..)'
-  deriving (Eq, Data)
 
 type instance XIEVar             (GhcPass _) = NoExtField
 type instance XIEThingAbs        (GhcPass _) = NoExtField
 type instance XIEThingAll        (GhcPass _) = NoExtField
 type instance XIEThingWith       (GhcPass _) = NoExtField
 type instance XIEModuleContents  (GhcPass _) = NoExtField
-type instance XIEAliases         (GhcPass _) = NoExtField
 type instance XIEGroup           (GhcPass _) = NoExtField
 type instance XIEDoc             (GhcPass _) = NoExtField
 type instance XIEDocNamed        (GhcPass _) = NoExtField
@@ -320,7 +307,7 @@ ieNames (IEThingAll  _ (L _ n)   )     = [ieWrappedName n]
 ieNames (IEThingWith _ (L _ n) _ ns _) = ieWrappedName n
                                        : map (ieWrappedName . unLoc) ns
 ieNames (IEModuleContents {})     = []
-ieNames (IEAliases        {})     = []
+ieNames (IEModuleContentsQualified {}) = []
 ieNames (IEGroup          {})     = []
 ieNames (IEDoc            {})     = []
 ieNames (IEDocNamed       {})     = []
@@ -345,13 +332,6 @@ replaceWrappedName (IEType    (L l _)) n = IEType    (L l n)
 replaceLWrappedName :: LIEWrappedName name1 -> name2 -> LIEWrappedName name2
 replaceLWrappedName (L l n) n' = L l (replaceWrappedName n n')
 
-instance Outputable IEAliases where
-    ppr = let pph xs = parens $ fsep $ punctuate comma $ map (ppr . unLoc) xs
-      in \case
-      IEAliasesAll             -> text "aliases (..)"
-      IEAliasesHiding False xs -> text "aliases"        <+> pph xs
-      IEAliasesHiding True  xs -> text "aliases hiding" <+> pph xs
-
 instance (p ~ GhcPass pass,OutputableBndrId p) => Outputable (IE p) where
     ppr (IEVar       _     var) = ppr (unLoc var)
     ppr (IEThingAbs  _   thing) = ppr (unLoc thing)
@@ -370,7 +350,8 @@ instance (p ~ GhcPass pass,OutputableBndrId p) => Outputable (IE p) where
                 in bs ++ [text ".."] ++ as
     ppr (IEModuleContents _ mod')
         = text "module" <+> ppr mod'
-    ppr (IEAliases _ (unLoc -> iea)) = ppr iea
+    ppr (IEModuleContentsQualified _ mod')
+        = text "module" <+> ppr mod' <+> text "qualified"
     ppr (IEGroup _ n _)           = text ("<IEGroup: " ++ show n ++ ">")
     ppr (IEDoc _ doc)             = ppr doc
     ppr (IEDocNamed _ string)     = text ("<IEDocNamed: " ++ string ++ ">")

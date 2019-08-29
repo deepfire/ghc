@@ -271,8 +271,7 @@ rnImportDecl this_mod
                                      , ideclSource = want_boot, ideclSafe = mod_safe
                                      , ideclQualified = qual_style, ideclImplicit = implicit
                                      , ideclAs = as_mod
-                                     , ideclHiding = imp_details
-                                     , ideclAliases = imp_details_aliases }))
+                                     , ideclHiding = imp_details }))
   = setSrcSpan loc $ do
 
     when (isJust mb_pkg) $ do
@@ -308,10 +307,6 @@ rnImportDecl this_mod
                             fsToUnitId pkg_fs == moduleUnitId this_mod))
          (addErr (text "A module cannot import itself:" <+> ppr imp_mod_name))
 
-    when (isJust imp_details &&
-          isJust imp_details_aliases) $
-      addErr (text "Cannot mix normal and alias imports in a single statement.")
-
     -- Check for a missing import list (Opt_WarnMissingImportList also
     -- checks for T(..) items but that is done in checkDodgyImport below)
     case imp_details of
@@ -321,11 +316,6 @@ rnImportDecl this_mod
            | otherwise  -> whenWOptM Opt_WarnMissingImportList $
                            addWarn (Reason Opt_WarnMissingImportList)
                                    (missingImportListWarn imp_mod_name)
-    -- XXX XStructuredImports: maybe honor missingImportListWarn for alias imports?
-    case imp_details_aliases of
-        Just (True, unLoc -> Nothing) ->
-          (addErr (text "An 'aliases hiding' import entry must specify omissions: " <+> ppr imp_mod_name))
-        _ -> return ()
 
     iface <- loadSrcInterface doc imp_mod_name want_boot (fmap sl_fs mb_pkg)
 

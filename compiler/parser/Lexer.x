@@ -635,7 +635,6 @@ data Token
   | ITstock
   | ITanyclass
   | ITvia
-  | ITaliases
 
   -- Backpack tokens
   | ITunit
@@ -844,7 +843,6 @@ reservedWordsFM = listToUFM $
          ( "dynamic",        ITdynamic,       xbit FfiBit),
          ( "safe",           ITsafe,          xbit FfiBit .|.
                                               xbit SafeHaskellBit),
-         ( "aliases",        ITaliases,       xbit StructuredImportsBit),
 
          ( "interruptible",  ITinterruptible, xbit InterruptibleFfiBit),
          ( "unsafe",         ITunsafe,        xbit FfiBit),
