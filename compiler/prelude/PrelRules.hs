@@ -801,12 +801,15 @@ liftLitDynFlags f = do
 removeOp32 :: RuleM CoreExpr
 removeOp32 = do
   dflags <- getDynFlags
-  case platformWordSize (targetPlatform dflags) of
-    PW4 -> do
+  case (platformWordSize (targetPlatform dflags),
+        platformArch (targetPlatform dflags)) of
+    (PW8, _) ->
+      mzero
+    (_, ArchJavaScript) ->
+      mzero
+    (PW4, _) -> do
       [e] <- getArgs
       return e
-    PW8 ->
-      mzero
 
 getArgs :: RuleM [CoreExpr]
 getArgs = RuleM $ \_ _ args -> Just args
